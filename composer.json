@@ -1,0 +1,24 @@
+{
+  "name": "skyline/cms-security",
+  "license": "BSD-3-Clause",
+  "minimum-stability": "dev",
+  "authors": [
+    {
+      "name": "Thomas Abplanalp",
+      "email": "info@tasoft.ch"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Skyline\\CMS\\Security\\" : "src"
+    }
+  },
+  "require" : {
+    "php": "^7.2",
+    "skyline/security": "dev-master",
+    "skyline/render": "dev-master"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^6"
+  }
+}
