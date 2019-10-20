@@ -38,6 +38,9 @@ use Skyline\Compiler\Factory\AbstractExtendedCompilerFactory;
 return [
     "access-control" => [
         AbstractExtendedCompilerFactory::COMPILER_CLASS_KEY => AccessControlCompiler::class,
+        AbstractExtendedCompilerFactory::COMPILER_ARGUMENTS_KEY => [
+            'excludeMagicMethods' => true
+        ],
         AbstractExtendedCompilerFactory::COMPILER_DEPENDENCIES_KEY => [
             'expose-symbols'
         ]
