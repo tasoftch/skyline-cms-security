@@ -36,14 +36,48 @@ namespace Skyline\CMS\Security\Compiler;
 
 use Skyline\Compiler\CompilerContext;
 use Skyline\Expose\Compiler\AbstractAnnotationCompiler;
+use Skyline\Compiler\CompilerConfiguration;
 
 class AccessControlCompiler extends AbstractAnnotationCompiler
 {
     public function compile(CompilerContext $context)
     {
         $access = [];
-        foreach($this->yieldClasses("ACTIONCONTROLLER") as $class) {
 
+        foreach($this->yieldClasses("ACTIONCONTROLLER") as $controller) {
+            $list = $this->findClassMethods($controller, self::OPT_PUBLIC_OBJECTIVE);
+
+            if($list) {
+                foreach($list as $name => $method) {
+                    $annots = $this->getAnnotationsOfMethod($method, true);
+                    if($annots) {
+                        $roles = $annots["role"] ?? NULL;
+                        if($roles) {
+                            $access[$name]["r"] = $roles;
+                        }
+                        $relia = $annots["reliability"] ?? NULL;
+                        if($relia) {
+                            $rl = array_shift($relia);
+
+                            if(count( $data = explode("::", $rl) ) == 2) {
+                                $symbol = $data[0];
+                                $cl = $this->qualifySymbol($data[0], $controller);
+                                if($cl != $symbol) {
+                                    $rl = eval("return $cl::$data[1];");
+                                }
+                            }
+
+                            if($rl && is_numeric($rl))
+                                $access[$name]["l"] = $rl;
+                        }
+
+                    }
+                }
+            }
         }
+        $dir = $context->getSkylineAppDirectory(CompilerConfiguration::SKYLINE_DIR_COMPILED);
+
+        $data = var_export($access, true);
+        file_put_contents( "$dir/access-control.php", "<?php\nreturn $data;" );
     }
 }
