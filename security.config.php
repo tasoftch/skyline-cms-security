@@ -32,27 +32,89 @@
  *
  */
 
+use Skyline\CMS\Security\Identity\IdentityServiceFactory;
 use Skyline\Kernel\Config\MainKernelConfig;
-use Skyline\Render\Context\DefaultRenderContext;
-use Skyline\Render\Service\CompiledRenderController;
-use Skyline\Render\Service\CompiledTemplateController;
+use Skyline\Security\Authentication\Challenge\HTTP\BasicChallenge;
+use Skyline\Security\Authentication\Challenge\HTTP\DigestChallenge;
+use Skyline\Security\Identity\Provider\AnonymousIdentityProvider;
+use Skyline\Security\Identity\Provider\HTTP\BasicIdentityProvider;
+use Skyline\Security\Identity\Provider\HTTP\DigestIdentityProvider;
+use Skyline\Security\Identity\Provider\HTTP\POSTFieldsIdentityProvider;
+use Skyline\Security\Identity\Provider\Session\RememberMeIdentityProvider;
+use Skyline\Security\Identity\Provider\Session\SessionIdentityProvider;
 use TASoft\Service\Config\AbstractFileConfiguration;
 
 return [
     MainKernelConfig::CONFIG_SERVICES => [
-        "renderController" => [
-            AbstractFileConfiguration::SERVICE_CLASS => CompiledRenderController::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'renderFile' => '$(C)/render.config.php'
+        IdentityServiceFactory::IDENTITY_SERVICE => [
+            AbstractFileConfiguration::SERVICE_CONTAINER => IdentityServiceFactory::class,
+            AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
+                IdentityServiceFactory::CONFIG_PROVIDERS => [
+                    // The anonymous provider
+                    IdentityServiceFactory::PROVIDER_NAME_ANONYMOUS => [
+                        AbstractFileConfiguration::SERVICE_CLASS => AnonymousIdentityProvider::class
+                    ],
+
+                    // Remember Me
+                    IdentityServiceFactory::PROVIDER_NAME_REMEMBER_ME => [
+                        AbstractFileConfiguration::SERVICE_CLASS => RememberMeIdentityProvider::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'providerKey' => '%security.session.provider%',
+                            'secret' => '%security.remember-me.secret%',
+                            'options' => '%security.remember-me.options%'
+                        ]
+                    ],
+
+                    // Session Provider
+                    IdentityServiceFactory::PROVIDER_NAME_SESSION => [
+                        AbstractFileConfiguration::SERVICE_CLASS => SessionIdentityProvider::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'providerKey' => '%security.session.provider%',
+                            'secret' => '%security.session.secret%',
+                            'options' => '%security.session.options%'
+                        ]
+                    ],
+
+                    // HTTP Basic Authentication
+                    IdentityServiceFactory::PROVIDER_NAME_HTTP_BASIC => [
+                        AbstractFileConfiguration::SERVICE_CLASS => BasicIdentityProvider::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'challenge' => '$httpBasicChallenge'
+                        ]
+                    ],
+
+                    // HTTP Digest Authentication
+                    IdentityServiceFactory::PROVIDER_NAME_HTTP_DIGEST => [
+                        AbstractFileConfiguration::SERVICE_CLASS => DigestIdentityProvider::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'challenge' => '$httpDigestChallenge'
+                        ]
+                    ],
+
+                    // HTML form sent with POST method
+                    IdentityServiceFactory::PROVIDER_NAME_HTTP_POST => [
+                        AbstractFileConfiguration::SERVICE_CLASS => POSTFieldsIdentityProvider::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'tokenFieldName' => "%security.http.post.tokenName%",
+                            "credentialFieldName" => '%security.http.post.credentialName%'
+                        ]
+                    ]
+                ],
+                IdentityServiceFactory::CONFIG_ENABLED => '%security.identity.order%'
             ]
         ],
-        "renderContext" => [
-            AbstractFileConfiguration::SERVICE_CLASS => DefaultRenderContext::class,
-        ],
-        "templateController" => [
-            AbstractFileConfiguration::SERVICE_CLASS => CompiledTemplateController::class,
+        'httpDigestChallenge' => [
+            AbstractFileConfiguration::SERVICE_CLASS => DigestChallenge::class,
             AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'templateFile' => '$(C)/templates.config.php'
+                'realm' => '%security.http.digest.realm%',
+                'nonce' => '%security.http.digest.nonce%',
+                'opaque' => '%security.http.digest.opaque%'
+            ]
+        ],
+        'httpBasicChallenge' => [
+            AbstractFileConfiguration::SERVICE_CLASS => BasicChallenge::class,
+            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                'realm' => '%security.http.basic.realm%'
             ]
         ]
     ]

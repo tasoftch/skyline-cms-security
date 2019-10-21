@@ -32,6 +32,68 @@
  *
  */
 
-return [
+use Skyline\CMS\Security\Identity\IdentityServiceFactory;
+use Skyline\Security\Identity\Provider\Session\RememberMeIdentityProvider;
+use Skyline\Security\Identity\Provider\Session\SessionIdentityProvider;
 
+return [
+    // Security persistence is required to store security values like request counts, auto-logout and so on.
+    // You may set a filename or a PDO object.
+    'security.persistence' => '$(C)/security.persistent.sqlite',
+
+    // Dynamically create a unique application provider string
+    'security.session.provider' => md5(__FILE__),
+
+    // Dynamically create unique secret
+    'security.remember-me.secret' => md5(uniqid()),
+    'security.remember-me.options' => [
+        RememberMeIdentityProvider::OPTION_COOKIE_LIFETIME => 100 /* days */ * 24 * 3600,
+        RememberMeIdentityProvider::OPTION_REMEMBER_ME => '%security.http.post.rememberMeName%',
+        /**
+         * Adjust remember-me cookie setup
+         * @see RememberMeIdentityProvider::OPTION_* constants
+         */
+
+        // For example, make the remember-me service available for the whole domain:
+        // RememberMeIdentityProvider::OPTION_COOKIE_DOMAIN => '.example.org'
+    ],
+
+    // Also create dynamically secrets different for sessions than remember me
+    'security.session.secret' => md5(uniqid()),
+    'security.session.options' => [
+        /**
+         * Adjust session cookie setup
+         * @see SessionIdentityProvider::OPTION_* constants
+         */
+    ],
+
+    'security.http.basic.realm' => 'Skyline Application',
+
+    'security.http.digest.realm' => 'Skyline Application',
+    // Set to null to grant pending authentication for an hour.
+    // Putting a custom value, make sure that is can not be guessed.
+    'security.http.digest.nonce' => NULL,
+    'security.http.digest.opaque' => NULL,
+
+    // HTTP Post, so html forms sent with post method are resolved as well using the following post field keys:
+    'security.http.post.tokenName' => 'username',
+    'security.http.post.credentialName' => 'password',
+    'security.http.post.rememberMeName' => 'remember_me',
+
+    'security.identity.order' => [
+        // List here (at this position in your SkylineAppData/Config/parameters.config.php or parameters.config.dev.php file), which identity provider you want to use in your application and in which order.
+        // In this example, they are ordered by their reliability.
+        // Please note: Enabling the anonymous provider you MUST specify an anonymous user as well!
+        // Please note: You must declare at least one identity provider to enable security service!
+
+        // IdentityServiceFactory::PROVIDER_NAME_ANONYMOUS,        // 10
+
+        // IdentityServiceFactory::PROVIDER_NAME_HTTP_BASIC,       // 100
+        // IdentityServiceFactory::PROVIDER_NAME_HTTP_DIGEST,      // 100
+
+        // IdentityServiceFactory::PROVIDER_NAME_REMEMBER_ME,      // 150
+        // IdentityServiceFactory::PROVIDER_NAME_SESSION,          // 200
+
+        // IdentityServiceFactory::PROVIDER_NAME_HTTP_POST         // 500
+    ]
 ];
