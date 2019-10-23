@@ -71,9 +71,9 @@ class AccessControlCompiler extends AbstractAnnotationCompiler
                                 $access[$name]["l"] = $rl;
                         }
 
-                        if($users = $annots["user"])
+                        if($users = $annots["user"] ?? NULL)
                             $access[$name]['u'] = $users;
-                        if($groups = $annots["group"])
+                        if($groups = $annots["group"] ?? NULL)
                             $access[$name]['g'] = $groups;
                     }
                 }
