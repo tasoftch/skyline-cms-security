@@ -72,8 +72,8 @@ return [
     'security.http.digest.realm' => 'Skyline Application',
     // Set to null to grant pending authentication for an hour.
     // Putting a custom value, make sure that is can not be guessed.
-    'security.http.digest.nonce' => NULL,
-    'security.http.digest.opaque' => NULL,
+    'security.http.digest.nonce' => "",
+    'security.http.digest.opaque' => "",
 
     // HTTP Post, so html forms sent with post method are resolved as well using the following post field keys:
     'security.http.post.tokenName' => 'username',
