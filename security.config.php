@@ -36,6 +36,7 @@ use Skyline\CMS\Security\Identity\IdentityServiceFactory;
 use Skyline\Kernel\Config\MainKernelConfig;
 use Skyline\Security\Authentication\Challenge\HTTP\BasicChallenge;
 use Skyline\Security\Authentication\Challenge\HTTP\DigestChallenge;
+use Skyline\Security\Identity\IdentityService;
 use Skyline\Security\Identity\Provider\AnonymousIdentityProvider;
 use Skyline\Security\Identity\Provider\HTTP\BasicIdentityProvider;
 use Skyline\Security\Identity\Provider\HTTP\DigestIdentityProvider;
@@ -101,7 +102,8 @@ return [
                     ]
                 ],
                 IdentityServiceFactory::CONFIG_ENABLED => '%security.identity.order%'
-            ]
+            ],
+            AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => IdentityService::class
         ],
         'httpDigestChallenge' => [
             AbstractFileConfiguration::SERVICE_CLASS => DigestChallenge::class,
