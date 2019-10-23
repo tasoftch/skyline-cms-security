@@ -83,17 +83,23 @@ return [
     'security.identity.order' => [
         // List here (at this position in your SkylineAppData/Config/parameters.config.php or parameters.config.dev.php file), which identity provider you want to use in your application and in which order.
         // In this example, they are ordered by their reliability.
+        // So it will try to obtain an identity with the best available reliability by default
+
         // Please note: Enabling the anonymous provider you MUST specify an anonymous user as well!
         // Please note: You must declare at least one identity provider to enable security service!
 
-        // IdentityServiceFactory::PROVIDER_NAME_ANONYMOUS,        // 10
-
-        // IdentityServiceFactory::PROVIDER_NAME_HTTP_BASIC,       // 100
-        // IdentityServiceFactory::PROVIDER_NAME_HTTP_DIGEST,      // 100
-
-        // IdentityServiceFactory::PROVIDER_NAME_REMEMBER_ME,      // 150
-        // IdentityServiceFactory::PROVIDER_NAME_SESSION,          // 200
-
         // IdentityServiceFactory::PROVIDER_NAME_HTTP_POST         // 500
+
+        // IdentityServiceFactory::PROVIDER_NAME_SESSION,          // 200
+        // IdentityServiceFactory::PROVIDER_NAME_REMEMBER_ME,      // 150
+
+        // IdentityServiceFactory::PROVIDER_NAME_HTTP_DIGEST,      // 100
+        // IdentityServiceFactory::PROVIDER_NAME_HTTP_BASIC,       // 100
+
+        // IdentityServiceFactory::PROVIDER_NAME_ANONYMOUS,        // 10
+    ],
+    'security.challenge.main-template' => 'main',
+    "security.challenge.child-templates" => [
+        'Content' => '401'
     ]
 ];

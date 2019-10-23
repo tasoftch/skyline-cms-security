@@ -32,10 +32,13 @@
  *
  */
 
+use Skyline\CMS\Security\Challenge\ChallengeManager;
+use Skyline\CMS\Security\Challenge\TemplateChallenge;
 use Skyline\CMS\Security\Identity\IdentityServiceFactory;
 use Skyline\Kernel\Config\MainKernelConfig;
 use Skyline\Security\Authentication\Challenge\HTTP\BasicChallenge;
 use Skyline\Security\Authentication\Challenge\HTTP\DigestChallenge;
+use Skyline\Security\Identity\IdentityInterface;
 use Skyline\Security\Identity\IdentityService;
 use Skyline\Security\Identity\Provider\AnonymousIdentityProvider;
 use Skyline\Security\Identity\Provider\HTTP\BasicIdentityProvider;
@@ -80,7 +83,7 @@ return [
                     IdentityServiceFactory::PROVIDER_NAME_HTTP_BASIC => [
                         AbstractFileConfiguration::SERVICE_CLASS => BasicIdentityProvider::class,
                         AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'challenge' => '$httpBasicChallenge'
+                            'challenge' => '$' . ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE
                         ]
                     ],
 
@@ -88,7 +91,7 @@ return [
                     IdentityServiceFactory::PROVIDER_NAME_HTTP_DIGEST => [
                         AbstractFileConfiguration::SERVICE_CLASS => DigestIdentityProvider::class,
                         AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'challenge' => '$httpDigestChallenge'
+                            'challenge' => '$' . ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE
                         ]
                     ],
 
@@ -105,7 +108,7 @@ return [
             ],
             AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => IdentityService::class
         ],
-        'httpDigestChallenge' => [
+        ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE => [
             AbstractFileConfiguration::SERVICE_CLASS => DigestChallenge::class,
             AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
                 'realm' => '%security.http.digest.realm%',
@@ -113,10 +116,32 @@ return [
                 'opaque' => '%security.http.digest.opaque%'
             ]
         ],
-        'httpBasicChallenge' => [
+        ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE => [
             AbstractFileConfiguration::SERVICE_CLASS => BasicChallenge::class,
             AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
                 'realm' => '%security.http.basic.realm%'
+            ]
+        ],
+        ChallengeManager::HTTP_POST_CHALLENGE_SERVICE => [
+            AbstractFileConfiguration::SERVICE_CLASS => TemplateChallenge::class,
+            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                'mainTemplateName' => '%security.challenge.main-template%',
+                "childTemplateNames" => '%security.challenge.child-templates%'
+            ]
+        ],
+        ChallengeManager::SERVICE_NAME => [
+            AbstractFileConfiguration::SERVICE_CLASS => ChallengeManager::class,
+            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                'challengeMap' => [
+                    BasicIdentityProvider::class => ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE,
+                    DigestIdentityProvider::class => ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE,
+                    POSTFieldsIdentityProvider::class => ChallengeManager::HTTP_POST_CHALLENGE_SERVICE
+                ],
+                'reliabilities' => [
+                    IdentityInterface::RELIABILITY_HTTP => ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE,
+                    IdentityInterface::RELIABILITY_HTTP-1 => ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE,
+                    IdentityInterface::RELIABILITY_HTML_FORM => ChallengeManager::HTTP_POST_CHALLENGE_SERVICE
+                ]
             ]
         ]
     ]
