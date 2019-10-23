@@ -40,11 +40,21 @@ use TASoft\EventManager\EventManager;
 
 class SecurityAccessControlPlugin
 {
+    private $accessControl;
+
+    public function __construct($aclFile)
+    {
+        $this->accessControl = require $aclFile;
+    }
+
     public function authorizeAction(string $eventName, PerformActionEvent $event, EventManager $eventManager, ...$arguments)
     {
         $description = $event->getActionDescription();
         $calledMethod = $description->getActionControllerClass() . "::" . $description->getMethodName();
+        var_dump($calledMethod);
 
-        echo $calledMethod;
+        if($info = $this->accessControl[$calledMethod] ?? NULL) {
+            var_dump($info);
+        }
     }
 }

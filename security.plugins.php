@@ -42,6 +42,9 @@ return [
 
         PluginConfig::PLUGIN_CLASS => SecurityAccessControlPlugin::class,
         PluginConfig::PLUGIN_METHOD => 'authorizeAction',
-        PluginConfig::PLUGIN_PRIORITY => 20
+        PluginConfig::PLUGIN_PRIORITY => 20,
+        PluginConfig::PLUGIN_ARGUMENTS => [
+            'aclFile' => '$(C)/access-control.php'
+        ]
     ]
 ];
