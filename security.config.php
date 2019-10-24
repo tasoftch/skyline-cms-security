@@ -32,12 +32,27 @@
  *
  */
 
+use Skyline\CMS\Security\Authentication\AuthenticationServiceFactory;
 use Skyline\CMS\Security\Challenge\ChallengeManager;
 use Skyline\CMS\Security\Challenge\TemplateChallenge;
 use Skyline\CMS\Security\Identity\IdentityServiceFactory;
+use Skyline\CMS\Security\UserSystem\PermissionChangedValidator;
+use Skyline\CMS\Security\UserSystem\UserProvider;
 use Skyline\Kernel\Config\MainKernelConfig;
+use Skyline\Security\Authentication\AuthenticationService;
 use Skyline\Security\Authentication\Challenge\HTTP\BasicChallenge;
 use Skyline\Security\Authentication\Challenge\HTTP\DigestChallenge;
+use Skyline\Security\Authentication\Validator\Factory\AutoLogoutValidatorFactory;
+use Skyline\Security\Authentication\Validator\Factory\BruteForceByClientIPValidatorFactory;
+use Skyline\Security\Authentication\Validator\Factory\BruteForceByServerURIValidatorFactory;
+use Skyline\Security\Encoder\BCryptPasswordEncoder;
+use Skyline\Security\Encoder\HttpBasicEncoder;
+use Skyline\Security\Encoder\HttpDigestA1Encoder;
+use Skyline\Security\Encoder\HttpDigestResponseEncoder;
+use Skyline\Security\Encoder\MessageDigestPasswordEncoder;
+use Skyline\Security\Encoder\PlaintextPasswordEncoder;
+use Skyline\Security\Encoder\PlaintextSaltPasswordEncoder;
+use Skyline\Security\Exception\AuthenticationValidatorException;
 use Skyline\Security\Identity\IdentityInterface;
 use Skyline\Security\Identity\IdentityService;
 use Skyline\Security\Identity\Provider\AnonymousIdentityProvider;
@@ -143,6 +158,80 @@ return [
                     IdentityInterface::RELIABILITY_HTML_FORM => ChallengeManager::HTTP_POST_CHALLENGE_SERVICE
                 ]
             ]
+        ],
+
+        AuthenticationServiceFactory::AUTHENTICATION_SERVICE => [
+            AbstractFileConfiguration::SERVICE_CONTAINER => AuthenticationServiceFactory::class,
+            AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
+                AuthenticationServiceFactory::PASSWORD_ENCODERS => [
+                    MessageDigestPasswordEncoder::class => [
+                        AbstractFileConfiguration::SERVICE_CLASS => MessageDigestPasswordEncoder::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'algorythm' => 'sha512',
+                            'base64' => true,
+                            'iterations' => 5000
+                        ]
+                    ],
+                    BCryptPasswordEncoder::class => [
+                        AbstractFileConfiguration::SERVICE_CLASS => BCryptPasswordEncoder::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'cost' => 30,
+                        ]
+                    ],
+                    PlaintextSaltPasswordEncoder::class => [
+                        AbstractFileConfiguration::SERVICE_CLASS => PlaintextSaltPasswordEncoder::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'caseInsensitive' => '%security.password.ignoreCase%',
+                        ]
+                    ],
+                    PlaintextPasswordEncoder::class => [
+                        AbstractFileConfiguration::SERVICE_CLASS => PlaintextPasswordEncoder::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'caseInsensitive' => '%security.password.ignoreCase%',
+                        ]
+                    ]
+                ],
+                AuthenticationServiceFactory::ANONYMOUT_USER_ID => '%security.user.anonymous%',
+                AuthenticationServiceFactory::ALLOWS_REMEMBER_ME => '%security.allows-remember-me%',
+                AuthenticationServiceFactory::USER_PROVIDERS => [
+                    [
+                        AbstractFileConfiguration::SERVICE_CLASS => UserProvider::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'PDO' => '$PDO'
+                        ]
+                    ]
+                ],
+                AuthenticationServiceFactory::VALIDATORS => [
+                    AuthenticationServiceFactory::VALIDATOR_CLIENT_BRUTE_FORCE => [
+                        AbstractFileConfiguration::SERVICE_CLASS => BruteForceByClientIPValidatorFactory::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'file' => '%security.persistent.storage.filename%',
+                            'attempts' => '%security.brute-force.client.maximal.attempts%',
+                            'blocking' => '%security.brute-force.client.blocking.interval%'
+                        ]
+                    ],
+                    AuthenticationServiceFactory::VALIDATOR_SERVER_BRUTE_FORCE => [
+                        AbstractFileConfiguration::SERVICE_CLASS => BruteForceByServerURIValidatorFactory::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'file' => '%security.persistent.storage.filename%',
+                            'attempts' => '%security.brute-force.server.maximal.attempts%',
+                            'blocking' => '%security.brute-force.server.blocking.interval%'
+                        ]
+                    ],
+                    AuthenticationServiceFactory::VALIDATOR_AUTO_LOGOUT => [
+                        AbstractFileConfiguration::SERVICE_CLASS => AutoLogoutValidatorFactory::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'file' => '%security.persistent.storage.filename%',
+                            'interval' => '%security.autologout.maximal-inactive%'
+                        ]
+                    ],
+                    AuthenticationServiceFactory::VALIDATOR_PERMISSION_CHANGED => [
+                        AbstractFileConfiguration::SERVICE_CLASS => PermissionChangedValidator::class
+                    ]
+                ],
+                AuthenticationServiceFactory::ENABLED_VALIDATORS => '%security.validators.enabled%'
+            ],
+            AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthenticationService::class
         ]
     ]
 ];

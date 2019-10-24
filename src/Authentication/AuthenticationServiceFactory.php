@@ -1,0 +1,118 @@
+<?php
+/**
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2019, TASoft Applications
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *  Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ *
+ *  Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ *  Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
+namespace Skyline\CMS\Security\Authentication;
+
+
+use Skyline\Security\Authentication\AuthenticationService;
+use Skyline\Security\Encoder\PasswordEncoderChain;
+use Skyline\Security\User\Provider\ChainUserProvider;
+use TASoft\Service\Container\AbstractContainer;
+use TASoft\Service\Container\ConfiguredServiceContainer;
+use TASoft\Service\ServiceManager;
+
+class AuthenticationServiceFactory extends AbstractContainer
+{
+    const AUTHENTICATION_SERVICE = 'authenticationService';
+
+    const PASSWORD_ENCODERS = 'password-encoders';
+    const ANONYMOUT_USER_ID = 'anonymousUID';
+    const ALLOWS_REMEMBER_ME = 'allowsRememberMe';
+    const USER_PROVIDERS = 'userProviders';
+    const VALIDATORS = 'validators';
+
+    const ENABLED_VALIDATORS = 'enabledValidators';
+
+    const VALIDATOR_CLIENT_BRUTE_FORCE = 'client-bf';
+    const VALIDATOR_SERVER_BRUTE_FORCE = 'server-bf';
+    const VALIDATOR_PERMISSION_CHANGED = 'perm-ch';
+    const VALIDATOR_AUTO_LOGOUT = 'auto-lgo';
+
+    private $configuration;
+
+    /**
+     * @return mixed
+     */
+    public function getConfiguration()
+    {
+        return $this->configuration;
+    }
+
+    /**
+     * @param mixed $configuration
+     */
+    public function setConfiguration($configuration): void
+    {
+        $this->configuration = $configuration;
+    }
+
+    protected function loadInstance()
+    {
+        $userProviders = $this->getConfiguration()[ static::USER_PROVIDERS ] ?? NULL;
+        if(!$userProviders)
+            throw new \InvalidArgumentException("Authentication service requires at least one user provider", 403);
+
+        if(count($userProviders) > 1) {
+            $userProvider = new ChainUserProvider($userProviders);
+        } else {
+            $userProvider = array_shift($userProviders);
+        }
+
+        $passwordEncoders = $this->getConfiguration()[static::PASSWORD_ENCODERS] ?? NULL;
+        if(!$passwordEncoders)
+            throw new \InvalidArgumentException("Authentication service requires at least one password encoder", 403);
+
+        if(count($passwordEncoders) > 1) {
+            $passwordEncoder = new PasswordEncoderChain();
+            foreach($passwordEncoders as $encoder)
+                $passwordEncoder->addEncoder($encoder);
+        } else {
+            $passwordEncoder = array_shift($passwordEncoders);
+        }
+
+        $validators = [];
+        if($validatorNames = $this->getConfiguration()[static::ENABLED_VALIDATORS] ?? NULL) {
+            $sm = ServiceManager::generalServiceManager();
+            foreach($validatorNames as $name) {
+                $info = $this->getConfiguration()[ static::VALIDATORS ] [$name] ?? NULL;
+                if(!$info)
+                    throw new \InvalidArgumentException("Can not instantiate validator $name. No definition specified", 403);
+                $cnt = new ConfiguredServiceContainer($name, $info, $sm);
+                $validators[] = $cnt->getInstance();
+            }
+        }
+
+        return new AuthenticationService($userProvider, $passwordEncoder, $validators);
+    }
+}
