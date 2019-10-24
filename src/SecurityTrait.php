@@ -41,6 +41,7 @@ use Skyline\Render\Model\ExtractableArrayModel;
 use Skyline\Security\Authentication\AuthenticationServiceInterface;
 use Skyline\Security\Authentication\Challenge\ChallengeInterface;
 use Skyline\Security\Authorization\AuthorizationServiceInterface;
+use Skyline\Security\Exception\Auth\NoIdentityException;
 use Skyline\Security\Exception\AuthorizationException;
 use Skyline\Security\Exception\SecurityException;
 use Skyline\Security\Identity\IdentityInterface;
@@ -151,9 +152,16 @@ trait SecurityTrait
      * @throws LessReliabilityException  Thrown if no identity with a minimal reliability is available
      */
     public function requireIdentity($minimalReliability = 0): IdentityInterface {
+        $increase = self::$identity ? true : false;
+
         if(!$this->getIdentity($minimalReliability)) {
-            $e = new LessReliabilityException("No identity available with required reliability");
-            $e->setReliability($minimalReliability);
+            if($increase) {
+                $e = new LessReliabilityException("No identity available with required reliability", 401);
+                $e->setReliability($minimalReliability);
+            }
+            else
+                $e = new NoIdentityException("No identity found on given request", 401);
+
             throw $e;
         }
         return self::$identity;

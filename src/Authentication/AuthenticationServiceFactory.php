@@ -35,6 +35,7 @@
 namespace Skyline\CMS\Security\Authentication;
 
 
+use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\Security\Authentication\AuthenticationService;
 use Skyline\Security\Encoder\PasswordEncoderChain;
 use Skyline\Security\User\Provider\ChainUserProvider;
@@ -58,6 +59,8 @@ class AuthenticationServiceFactory extends AbstractContainer
     const VALIDATOR_SERVER_BRUTE_FORCE = 'server-bf';
     const VALIDATOR_PERMISSION_CHANGED = 'perm-ch';
     const VALIDATOR_AUTO_LOGOUT = 'auto-lgo';
+
+    const VALIDATOR_INSTALLER_NAME = 'installerName';
 
     private $configuration;
 
@@ -102,14 +105,22 @@ class AuthenticationServiceFactory extends AbstractContainer
         }
 
         $validators = [];
+        $sm = ServiceManager::generalServiceManager();
+
         if($validatorNames = $this->getConfiguration()[static::ENABLED_VALIDATORS] ?? NULL) {
-            $sm = ServiceManager::generalServiceManager();
             foreach($validatorNames as $name) {
                 $info = $this->getConfiguration()[ static::VALIDATORS ] [$name] ?? NULL;
                 if(!$info)
                     throw new \InvalidArgumentException("Can not instantiate validator $name. No definition specified", 403);
                 $cnt = new ConfiguredServiceContainer($name, $info, $sm);
                 $validators[] = $cnt->getInstance();
+            }
+        }
+
+        if($installer = $this->getConfiguration()[static::VALIDATOR_INSTALLER_NAME] ?? NULL) {
+            $installer = $sm->get($installer);
+            if($installer instanceof IdentityInstaller) {
+                $validators[] = $installer;
             }
         }
 

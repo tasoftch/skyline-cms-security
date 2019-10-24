@@ -35,6 +35,8 @@
 use Skyline\CMS\Security\Authentication\AuthenticationServiceFactory;
 use Skyline\CMS\Security\Challenge\ChallengeManager;
 use Skyline\CMS\Security\Challenge\TemplateChallenge;
+use Skyline\CMS\Security\Identity\IdentityInstaller;
+use Skyline\CMS\Security\Identity\IdentityInstallerServiceFactory;
 use Skyline\CMS\Security\Identity\IdentityServiceFactory;
 use Skyline\CMS\Security\UserSystem\PermissionChangedValidator;
 use Skyline\CMS\Security\UserSystem\UserProvider;
@@ -205,7 +207,7 @@ return [
                     AuthenticationServiceFactory::VALIDATOR_CLIENT_BRUTE_FORCE => [
                         AbstractFileConfiguration::SERVICE_CLASS => BruteForceByClientIPValidatorFactory::class,
                         AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'file' => '%security.persistent.storage.filename%',
+                            'file' => '%security.persistence%',
                             'attempts' => '%security.brute-force.client.maximal.attempts%',
                             'blocking' => '%security.brute-force.client.blocking.interval%'
                         ]
@@ -213,7 +215,7 @@ return [
                     AuthenticationServiceFactory::VALIDATOR_SERVER_BRUTE_FORCE => [
                         AbstractFileConfiguration::SERVICE_CLASS => BruteForceByServerURIValidatorFactory::class,
                         AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'file' => '%security.persistent.storage.filename%',
+                            'file' => '%security.persistence%',
                             'attempts' => '%security.brute-force.server.maximal.attempts%',
                             'blocking' => '%security.brute-force.server.blocking.interval%'
                         ]
@@ -221,7 +223,7 @@ return [
                     AuthenticationServiceFactory::VALIDATOR_AUTO_LOGOUT => [
                         AbstractFileConfiguration::SERVICE_CLASS => AutoLogoutValidatorFactory::class,
                         AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'file' => '%security.persistent.storage.filename%',
+                            'file' => '%security.persistence%',
                             'interval' => '%security.autologout.maximal-inactive%'
                         ]
                     ],
@@ -229,9 +231,36 @@ return [
                         AbstractFileConfiguration::SERVICE_CLASS => PermissionChangedValidator::class
                     ]
                 ],
-                AuthenticationServiceFactory::ENABLED_VALIDATORS => '%security.validators.enabled%'
+                AuthenticationServiceFactory::ENABLED_VALIDATORS => '%security.validators.enabled%',
+                AuthenticationServiceFactory::VALIDATOR_INSTALLER_NAME => IdentityInstallerServiceFactory::SERVICE_NAME
             ],
             AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthenticationService::class
+        ],
+        IdentityInstallerServiceFactory::SERVICE_NAME => [
+            AbstractFileConfiguration::SERVICE_CLASS => IdentityInstallerServiceFactory::class,
+            AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
+                IdentityInstallerServiceFactory::IDENTITY_SERVICE_NAME => IdentityServiceFactory::IDENTITY_SERVICE,
+                IdentityInstallerServiceFactory::INSTALLABLES => [
+                    // Here are available mappings
+                    // This means, if the key identity provider successfully creates an identity that was authenticated,
+                    // then all providers in values get an install identity command.
+                    // Please note that classes are compared by names (not instanceof)
+                    POSTFieldsIdentityProvider::class => [
+                        POSTFieldsIdentityProvider::class,
+                        SessionIdentityProvider::class
+                    ],
+                    BasicIdentityProvider::class => [
+                        BasicIdentityProvider::class
+                    ],
+                    DigestIdentityProvider::class => [
+                        DigestIdentityProvider::class
+                    ],
+                    AnonymousIdentityProvider::class => [
+                        AnonymousIdentityProvider::class
+                    ]
+                ]
+            ],
+            AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => IdentityInstaller::class
         ]
     ]
 ];

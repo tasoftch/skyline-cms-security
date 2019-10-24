@@ -108,7 +108,6 @@ return [
 
     "security.user.anonymous" => 0,
     "security.allows-remember-me" => false,
-    "security.persistent.storage.filename" => '$(C)/security.persistent.sqlite',
 
     "security.brute-force.client.maximal.attempts" => 3,
     "security.brute-force.client.blocking.interval" => 900,
@@ -122,5 +121,7 @@ return [
         // AuthenticationServiceFactory::VALIDATOR_CLIENT_BRUTE_FORCE   // recommended
         // AuthenticationServiceFactory::VALIDATOR_AUTO_LOGOUT          // also recommended
         // AuthenticationServiceFactory::VALIDATOR_PERMISSION_CHANGED   // optional, if enabled, a logged user gets logged out if an administrator changes its permissions while session or remember-me session
-    ]
+    ],
+
+    'security.http-post.allows-password-reset' => true
 ];

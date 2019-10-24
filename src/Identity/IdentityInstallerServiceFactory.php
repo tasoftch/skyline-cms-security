@@ -32,51 +32,44 @@
  *
  */
 
-namespace Skyline\CMS\Security\Plugin;
+namespace Skyline\CMS\Security\Identity;
 
 
-use Skyline\Application\Controller\CustomRenderInformationInterface;
-use Skyline\Application\Event\PerformActionEvent;
-use Skyline\CMS\Security\SecurityTrait;
-use Skyline\Render\Context\DefaultRenderContext;
-use Skyline\Render\Info\RenderInfo;
-use TASoft\EventManager\EventManager;
+use Skyline\Security\Identity\IdentityServiceInterface;
+use TASoft\Service\Container\AbstractContainer;
 use TASoft\Service\ServiceManager;
 
-class SecurityAccessControlPlugin
+class IdentityInstallerServiceFactory extends AbstractContainer
 {
-    use SecurityTrait;
+    const SERVICE_NAME = 'identityInstaller';
 
-    private $accessControl;
+    const IDENTITY_SERVICE_NAME = 'identityService';
 
-    public function __construct($aclFile)
+    const INSTALLABLES = 'installables';
+
+    private $configuration;
+
+    /**
+     * @return mixed
+     */
+    public function getConfiguration()
     {
-        $this->accessControl = require $aclFile;
+        return $this->configuration;
     }
 
-    public function authorizeAction(string $eventName, PerformActionEvent $event, EventManager $eventManager, ...$arguments)
+    /**
+     * @param mixed $configuration
+     */
+    public function setConfiguration($configuration): void
     {
-        $description = $event->getActionDescription();
-        $calledMethod = $description->getActionControllerClass() . "::" . $description->getMethodName();
+        $this->configuration = $configuration;
+    }
 
-        if($info = $this->accessControl[$calledMethod] ?? NULL) {
-            $actionController = $event->getActionController();
-
-            if($actionController instanceof CustomRenderInformationInterface)
-                $renderInfo = $actionController->getRenderInformation();
-            else
-                $renderInfo = new RenderInfo();
-
-            /** @var DefaultRenderContext $ctx */
-            $ctx = ServiceManager::generalServiceManager()->get("renderContext");
-            $ctx->setRenderInfo($renderInfo);
-            $event->setRenderInformation($renderInfo);
-
-            $this->performCodeUnderChallenge(function() use ($info) {
-                if(isset($info["l"])) {
-                    $this->requireIdentity($info["l"]);
-                }
-            });
-        }
+    protected function loadInstance()
+    {
+        $serviceName = $this->getConfiguration()[ static::IDENTITY_SERVICE_NAME ];
+        /** @var IdentityServiceInterface $is */
+        $is = ServiceManager::generalServiceManager()->get($serviceName);
+        return new IdentityInstaller($this->getConfiguration()[ static::INSTALLABLES ], $is);
     }
 }
