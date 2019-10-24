@@ -37,7 +37,9 @@ namespace Skyline\CMS\Security\Plugin;
 
 use Skyline\Application\Controller\CustomRenderInformationInterface;
 use Skyline\Application\Event\PerformActionEvent;
+use Skyline\CMS\Security\Exception\RequiredTokenException;
 use Skyline\CMS\Security\SecurityTrait;
+use Skyline\CMS\Security\UserSystem\User;
 use Skyline\Render\Context\DefaultRenderContext;
 use Skyline\Render\Info\RenderInfo;
 use TASoft\EventManager\EventManager;
@@ -75,6 +77,34 @@ class SecurityAccessControlPlugin
             $this->performCodeUnderChallenge(function() use ($info) {
                 if(isset($info["l"])) {
                     $this->requireIdentity($info["l"]);
+                }
+
+                if($users = $info["t"] ?? NULL) {
+                    $token = $this->requireIdentity()->getToken();
+                    $ok = false;
+                    foreach ($users as $user) {
+                        if(strcasecmp($user, $token) === 0) {
+                            $ok = true;
+                            break;
+                        }
+                    }
+
+                    if(!$ok) {
+                        $e = new RequiredTokenException("A specific token is required", 401);
+                        $e->setToken($token);
+                        throw $e;
+                    }
+                }
+
+                $users = $info["u"] ?? NULL;
+                $groups = $info["g"] ?? NULL;
+                $roles = $info["r"] ?? NULL;
+
+                if($users||$groups||$roles) {
+                    $user = $this->requireUser();
+                    if($user instanceof User) {
+
+                    }
                 }
             });
         }

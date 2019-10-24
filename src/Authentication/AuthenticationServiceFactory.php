@@ -41,6 +41,7 @@ use Skyline\Security\Encoder\PasswordEncoderChain;
 use Skyline\Security\User\Provider\ChainUserProvider;
 use TASoft\Service\Container\AbstractContainer;
 use TASoft\Service\Container\ConfiguredServiceContainer;
+use TASoft\Service\Exception\BadConfigurationException;
 use TASoft\Service\ServiceManager;
 
 class AuthenticationServiceFactory extends AbstractContainer
@@ -86,26 +87,51 @@ class AuthenticationServiceFactory extends AbstractContainer
         if(!$userProviders)
             throw new \InvalidArgumentException("Authentication service requires at least one user provider", 403);
 
+        $sm = ServiceManager::generalServiceManager();
+        $makeInstance = function($config) use ($sm) {
+            try {
+                $cnt = new ConfiguredServiceContainer("", $config, $sm);
+            } catch (BadConfigurationException $exception) {
+                return NULL;
+            }
+            $s = $cnt->getInstance();
+            unset($cnt);
+            return $s;
+        };
+
         if(count($userProviders) > 1) {
-            $userProvider = new ChainUserProvider($userProviders);
+            $userProvider = new ChainUserProvider();
+            foreach ($userProviders as $provider)
+                $userProvider->addProvider( $makeInstance($provider) );
         } else {
-            $userProvider = array_shift($userProviders);
+            foreach($userProviders as $provider) {
+                $userProvider = $makeInstance($provider);
+                break;
+            }
         }
 
         $passwordEncoders = $this->getConfiguration()[static::PASSWORD_ENCODERS] ?? NULL;
         if(!$passwordEncoders)
             throw new \InvalidArgumentException("Authentication service requires at least one password encoder", 403);
 
+
         if(count($passwordEncoders) > 1) {
             $passwordEncoder = new PasswordEncoderChain();
-            foreach($passwordEncoders as $encoder)
-                $passwordEncoder->addEncoder($encoder);
+            foreach($passwordEncoders as $encoder) {
+                $cnt = new ConfiguredServiceContainer("", $encoder, $sm);
+                $passwordEncoder->addEncoder( $cnt->getInstance() );
+                unset($cnt);
+            }
         } else {
-            $passwordEncoder = array_shift($passwordEncoders);
+            foreach($passwordEncoders as $encoder) {
+                $cnt = new ConfiguredServiceContainer("", $encoder, $sm);
+                $passwordEncoder = $cnt->getInstance();
+                unset($cnt);
+                break;
+            }
         }
 
         $validators = [];
-        $sm = ServiceManager::generalServiceManager();
 
         if($validatorNames = $this->getConfiguration()[static::ENABLED_VALIDATORS] ?? NULL) {
             foreach($validatorNames as $name) {
