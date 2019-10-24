@@ -134,7 +134,7 @@ LEFT JOIN SKY_ROLE AS R10 ON R6.id = R9.parent
 LEFT JOIN SKY_GROUP_ROLE ON SKY_GROUP_ROLE.role = R1.id
 LEFT JOIN SKY_USER_GROUP ON SKY_GROUP_ROLE.`groupid` = SKY_USER_GROUP.`groupid`
 LEFT JOIN SKY_USER_ROLE ON SKY_USER_ROLE.role = R1.id
-WHERE SKY_USER_ROLE.user = $uid OR SKY_GROUP_USER.user = $uid
+WHERE SKY_USER_ROLE.user = $uid OR SKY_USER_GROUP.user = $uid
 ORDER BY role") as $record) {
                 $roles[] = $record["role"];
             }
