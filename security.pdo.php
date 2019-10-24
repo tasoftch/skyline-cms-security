@@ -14,11 +14,11 @@ return [
         ->addField(new Field("prename", Field::TYPE_STRING, 50))
         ->addField(new Field("surname", Field::TYPE_STRING, 50))
         ->addField(new Field("options", Field::TYPE_INTEGER, 11, Field::ATTR_HAS_DEFAULT, User::OPTION_CAN_LOGIN_WITH_MAIL))
-        ->addField(new Field("lastLoginDate", Field::TYPE_DATE_TIME, 0, Field::ATTR_UPDATE_TIME_STAMP)),
+        ->addField(new Field("lastLoginDate", Field::TYPE_DATE_TIME, 0, Field::ATTR_DEFAULT_TIMESTAMP|Field::ATTR_HAS_DEFAULT|Field::ATTR_UPDATE_TIME_STAMP)),
     (new Table("SKY_ROLE"))
         ->addField(new Field("id", Field::TYPE_INTEGER, 11, Field::ATTR_AUTO_INCREMENT|Field::ATTR_INDEX))
         ->addField(new Field("name", Field::TYPE_STRING, 50))
-        ->addField(new Field("description", Field::TYPE_TEXT, 0, Field::ATTR_HAS_DEFAULT, NULL))
+        ->addField(new Field("description", Field::TYPE_TEXT, 0, Field::ATTR_ALLOWS_NULL | Field::ATTR_HAS_DEFAULT, NULL))
         ->addField(new Field("parent", Field::TYPE_INTEGER, 11, Field::ATTR_HAS_DEFAULT, 0))
         ->addField(new Field("options", Field::TYPE_INTEGER, 11, Field::ATTR_HAS_DEFAULT, Role::OPTION_ASSIGNABLE|Role::OPTION_VISIBLE)),
     (new Table("SKY_GROUP"))
