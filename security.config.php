@@ -237,7 +237,7 @@ return [
             AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthenticationService::class
         ],
         IdentityInstallerServiceFactory::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CLASS => IdentityInstallerServiceFactory::class,
+            AbstractFileConfiguration::SERVICE_CONTAINER => IdentityInstallerServiceFactory::class,
             AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
                 IdentityInstallerServiceFactory::IDENTITY_SERVICE_NAME => IdentityServiceFactory::IDENTITY_SERVICE,
                 IdentityInstallerServiceFactory::INSTALLABLES => [

@@ -70,6 +70,6 @@ class IdentityInstallerServiceFactory extends AbstractContainer
         $serviceName = $this->getConfiguration()[ static::IDENTITY_SERVICE_NAME ];
         /** @var IdentityServiceInterface $is */
         $is = ServiceManager::generalServiceManager()->get($serviceName);
-        return new IdentityInstaller($this->getConfiguration()[ static::INSTALLABLES ], $is);
+        return new IdentityInstaller($this->getConfiguration()[ static::INSTALLABLES ]->toArray(), $is);
     }
 }
