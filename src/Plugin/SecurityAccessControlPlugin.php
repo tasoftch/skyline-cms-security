@@ -37,7 +37,9 @@ namespace Skyline\CMS\Security\Plugin;
 
 use Skyline\Application\Controller\CustomRenderInformationInterface;
 use Skyline\Application\Event\PerformActionEvent;
+use Skyline\CMS\Security\Exception\InvalidUserException;
 use Skyline\CMS\Security\Exception\RequiredTokenException;
+use Skyline\CMS\Security\Exception\RequiredUsernameException;
 use Skyline\CMS\Security\SecurityTrait;
 use Skyline\CMS\Security\UserSystem\User;
 use Skyline\Render\Context\DefaultRenderContext;
@@ -96,14 +98,34 @@ class SecurityAccessControlPlugin
                     }
                 }
 
-                $users = $info["u"] ?? NULL;
-                $groups = $info["g"] ?? NULL;
-                $roles = $info["r"] ?? NULL;
+                $users = $info["u"] ?? [];
+                $groups = $info["g"] ?? [];
+                $roles = $info["r"] ?? [];
 
                 if($users||$groups||$roles) {
                     $user = $this->requireUser();
                     if($user instanceof User) {
+                        if($users) {
+                            $inList = false;
+                            foreach($users as $u) {
+                                if(strcasecmp($user->getUsername(), $u) === 0) {
+                                    $inList=true;
+                                    break;
+                                }
+                            }
+                            if(!$inList) {
+                                $e = new RequiredUsernameException("A specific username is required", 401);
+                                $e->setUsername($user->getUsername());
+                                $e->setIdentity($this->getIdentity());
+                                throw $e;
+                            }
+                        }
 
+                    } else {
+                        $e = new InvalidUserException("User %s is not supported by Skyline CMS", 403, NULL, $user->getUsername());
+                        $e->setIdentity($this->getIdentity());
+                        $e->setUsername($user->getUsername());
+                        throw $e;
                     }
                 }
             });

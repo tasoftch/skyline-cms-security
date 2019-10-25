@@ -48,13 +48,9 @@ use Skyline\Security\Authentication\Validator\Factory\AutoLogoutValidatorFactory
 use Skyline\Security\Authentication\Validator\Factory\BruteForceByClientIPValidatorFactory;
 use Skyline\Security\Authentication\Validator\Factory\BruteForceByServerURIValidatorFactory;
 use Skyline\Security\Encoder\BCryptPasswordEncoder;
-use Skyline\Security\Encoder\HttpBasicEncoder;
-use Skyline\Security\Encoder\HttpDigestA1Encoder;
-use Skyline\Security\Encoder\HttpDigestResponseEncoder;
 use Skyline\Security\Encoder\MessageDigestPasswordEncoder;
 use Skyline\Security\Encoder\PlaintextPasswordEncoder;
 use Skyline\Security\Encoder\PlaintextSaltPasswordEncoder;
-use Skyline\Security\Exception\AuthenticationValidatorException;
 use Skyline\Security\Identity\IdentityInterface;
 use Skyline\Security\Identity\IdentityService;
 use Skyline\Security\Identity\Provider\AnonymousIdentityProvider;
@@ -247,7 +243,8 @@ return [
                     // Please note that classes are compared by names (not instanceof)
                     POSTFieldsIdentityProvider::class => [
                         POSTFieldsIdentityProvider::class,
-                        SessionIdentityProvider::class
+                        SessionIdentityProvider::class,
+                        RememberMeIdentityProvider::class
                     ],
                     BasicIdentityProvider::class => [
                         BasicIdentityProvider::class

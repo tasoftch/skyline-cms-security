@@ -35,14 +35,15 @@
 namespace Skyline\CMS\Security\Identity;
 
 use Skyline\Security\Authentication\Validator\AuthenticationPostValidatorInterface;
-use Skyline\Security\Exception\AuthenticationValidatorException;
 use Skyline\Security\Identity\IdentityInterface;
 use Skyline\Security\Identity\IdentityService;
 use Skyline\Security\Identity\IdentityServiceInterface;
 use Skyline\Security\Identity\Provider\ChainIdentityProvider;
-use Skyline\Security\Identity\Provider\IdentityProviderChainInterface;
+use Skyline\Security\Identity\Provider\IdentityProviderInterface;
 use Skyline\Security\User\UserInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use TASoft\Service\ServiceManager;
 
 class IdentityInstaller implements AuthenticationPostValidatorInterface
 {
@@ -104,12 +105,29 @@ class IdentityInstaller implements AuthenticationPostValidatorInterface
 
     public function grantAfterAuthentication(IdentityInterface $identity, ?UserInterface $user, Request $request): bool
     {
+        /** @var Response $response */
+        $response = ServiceManager::generalServiceManager()->get("response");
         if($user) {
             // Only install, if authentication was successful
-
+            $is = $this->getIdentityService();
+            if($is instanceof IdentityService) {
+                if($provider = $is->getProviderForIdentity($identity)) {
+                    if($mapping = $this->mappings[get_class($provider)] ?? NULL) {
+                        foreach($this->getReachableProviders() as $provider) {
+                            if(in_array(get_class($provider), $mapping)) {
+                                $provider->uninstallIdentity($identity, $response);
+                                $provider->installIdentity($identity, $request, $response);
+                            }
+                        }
+                    }
+                }
+            }
         } else {
             // Otherwise revoke installation
-
+            /** @var IdentityProviderInterface $provider */
+            foreach($this->getReachableProviders() as $provider) {
+                $provider->uninstallIdentity($identity, $response);
+            }
         }
         return true;
     }

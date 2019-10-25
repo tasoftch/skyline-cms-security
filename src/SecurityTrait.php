@@ -45,6 +45,7 @@ use Skyline\Security\Exception\Auth\NoIdentityException;
 use Skyline\Security\Exception\AuthorizationException;
 use Skyline\Security\Exception\SecurityException;
 use Skyline\Security\Identity\IdentityInterface;
+use Skyline\Security\Identity\IdentityService;
 use Skyline\Security\Identity\IdentityServiceInterface;
 use Skyline\Security\User\UserInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -128,12 +129,19 @@ trait SecurityTrait
      * Tries to obtain an identity with minimal reliability.
      *
      * @param int $minimalReliability
+     * @param IdentityInterface $minimalFound
      * @return IdentityInterface|null
      */
-    public function getIdentity($minimalReliability = 0): ?IdentityInterface {
+    public function getIdentity($minimalReliability = 0, IdentityInterface &$minimalFound = NULL): ?IdentityInterface {
         if(NULL === self::$identity || (self::$identity instanceof IdentityInterface && self::$identity->getReliability() < $minimalReliability)) {
-            if($minimalReliability)
-                self::$identity = $this->getIdentityService()->getIdentityWithReliability($this->getRequest(), $minimalReliability);
+            if($minimalReliability) {
+                $is = $this->getIdentityService();
+                if($is instanceof IdentityService) {
+                    self::$identity = $is->getIdentityWithReliabilityMin($this->getRequest(), $minimalReliability, $minimalFound);
+                } else {
+                    self::$identity = $this->getIdentityService()->getIdentityWithReliability($this->getRequest(), $minimalReliability);
+                }
+            }
             else
                 self::$identity = $this->getIdentityService()->getIdentity($this->getRequest());
 
@@ -154,8 +162,8 @@ trait SecurityTrait
     public function requireIdentity($minimalReliability = 0): IdentityInterface {
         $increase = self::$identity ? true : false;
 
-        if(!$this->getIdentity($minimalReliability)) {
-            if($increase) {
+        if(!$this->getIdentity($minimalReliability, $minimal)) {
+            if($increase || $minimal) {
                 $e = new LessReliabilityException("No identity available with required reliability", 401);
                 $e->setReliability($minimalReliability);
             }
