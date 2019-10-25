@@ -103,6 +103,20 @@ class IdentityInstaller implements AuthenticationPostValidatorInterface
         return $this->_reachableProviders;
     }
 
+    /**
+     * Tries to find an identity provider by a given class name.
+     *
+     * @param $className
+     * @return IdentityProviderInterface|null
+     */
+    public function getIdentityProviderOfClass($className): ?IdentityProviderInterface {
+        foreach($this->getReachableProviders() as $provider) {
+            if(get_class($provider) == $className)
+                return $provider;
+        }
+        return NULL;
+    }
+
     public function grantAfterAuthentication(IdentityInterface $identity, ?UserInterface $user, Request $request): bool
     {
         /** @var Response $response */
