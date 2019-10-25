@@ -29,6 +29,8 @@ This annotations are available:
     Requires a minimal reliability.
 - ```@token <string>``` (multiple allowed, if one matches, condition is fulfilled)  
     Requires a specific identity token name.
+- ```@apply-identity```  
+    Forces to authenticate the identity.
 
 **Authentication**
 - ```@user <string>``` (multiple allowed, if one matches, condition is fulfilled)  

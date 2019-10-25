@@ -102,7 +102,7 @@ class SecurityAccessControlPlugin
                 $groups = $info["g"] ?? [];
                 $roles = $info["r"] ?? [];
 
-                if($users||$groups||$roles) {
+                if($users||$groups||$roles||($info["a"] ?? false)) {
                     $user = $this->requireUser();
                     if($user instanceof User) {
                         if($users) {
