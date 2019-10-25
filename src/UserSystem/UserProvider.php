@@ -75,6 +75,19 @@ class UserProvider implements UserProviderInterface, UserProviderAwareInterface,
         return $names;
     }
 
+    public function getMemberShip($username): array {
+        $groups = [];
+        foreach($this->PDO->select("SELECT
+    SKY_GROUP.id, name
+FROM SKY_GROUP
+         JOIN SKY_USER_GROUP ON groupid = id
+        JOIN SKY_USER ON user = SKY_USER.id
+WHERE username = ?", [$username]) as $group) {
+            $groups[ $group["id"] * 1 ] = $group["name"];
+        }
+        return $groups;
+    }
+
     public function loadUserWithToken(string $token): ?UserInterface
     {
         $withMailOption = User::OPTION_CAN_LOGIN_WITH_MAIL;

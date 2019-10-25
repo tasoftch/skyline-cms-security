@@ -33,6 +33,7 @@
  */
 
 use Skyline\CMS\Security\Authentication\AuthenticationServiceFactory;
+use Skyline\CMS\Security\Authorization\AuthorizationServiceFactory;
 use Skyline\CMS\Security\Challenge\ChallengeManager;
 use Skyline\CMS\Security\Challenge\TemplateChallenge;
 use Skyline\CMS\Security\Identity\IdentityInstaller;
@@ -47,6 +48,9 @@ use Skyline\Security\Authentication\Challenge\HTTP\DigestChallenge;
 use Skyline\Security\Authentication\Validator\Factory\AutoLogoutValidatorFactory;
 use Skyline\Security\Authentication\Validator\Factory\BruteForceByClientIPValidatorFactory;
 use Skyline\Security\Authentication\Validator\Factory\BruteForceByServerURIValidatorFactory;
+use Skyline\Security\Authorization\AuthorizationService;
+use Skyline\Security\Authorization\Voter\RoleChainVoter;
+use Skyline\Security\Authorization\Voter\RoleRootVoter;
 use Skyline\Security\Encoder\BCryptPasswordEncoder;
 use Skyline\Security\Encoder\MessageDigestPasswordEncoder;
 use Skyline\Security\Encoder\PlaintextPasswordEncoder;
@@ -258,6 +262,19 @@ return [
                 ]
             ],
             AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => IdentityInstaller::class
+        ],
+        AuthorizationServiceFactory::SERVICE_NAME => [
+            AbstractFileConfiguration::SERVICE_CONTAINER => AuthorizationServiceFactory::class,
+            AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
+                AuthorizationServiceFactory::VOTERS => [
+                    RoleRootVoter::class,
+                    RoleChainVoter::class
+                ],
+                AuthorizationServiceFactory::STRATEGY => '%security.authorization.strategy%',
+                AuthorizationServiceFactory::ALLOW_IF_ABSTAIN => '%security.authorization.allowIfAllAbstain%',
+                AuthorizationServiceFactory::ALLOW_IF_EQUAL => '%security.authorization.allowIfEqualGrantedAndDenied%',
+            ],
+            AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthorizationService::class
         ]
     ]
 ];

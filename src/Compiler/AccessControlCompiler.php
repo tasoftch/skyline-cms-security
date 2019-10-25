@@ -77,6 +77,8 @@ class AccessControlCompiler extends AbstractAnnotationCompiler
                             $access[$name]['t'] = $tokens;
                         if($groups = $annots["group"] ?? NULL)
                             $access[$name]['g'] = $groups;
+                        if($groups = $annots["apply-identity"] ?? NULL)
+                            $access[$name]['a'] = true;
                     }
                 }
             }

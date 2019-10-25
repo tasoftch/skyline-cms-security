@@ -33,6 +33,8 @@
  */
 
 use Skyline\CMS\Security\Identity\IdentityServiceFactory;
+use Skyline\Security\Authorization\AbstractAuthorizationService;
+use Skyline\Security\Authorization\AuthorizationServiceInterface;
 use Skyline\Security\Identity\Provider\Session\RememberMeIdentityProvider;
 use Skyline\Security\Identity\Provider\Session\SessionIdentityProvider;
 
@@ -123,5 +125,10 @@ return [
         // AuthenticationServiceFactory::VALIDATOR_PERMISSION_CHANGED   // optional, if enabled, a logged user gets logged out if an administrator changes its permissions while session or remember-me session
     ],
 
-    'security.http-post.allows-password-reset' => true
+    'security.http-post.allows-password-reset' => true,
+
+    // Authorization
+    'security.authorization.strategy' => AbstractAuthorizationService::STRATEGY_AFFIRMATIVE,
+    'security.authorization.allowIfAllAbstain' => false,
+    'security.authorization.allowIfEqualGrantedAndDenied' => true
 ];

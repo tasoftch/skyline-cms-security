@@ -38,12 +38,16 @@ namespace Skyline\CMS\Security\Plugin;
 use Skyline\Application\Controller\CustomRenderInformationInterface;
 use Skyline\Application\Event\PerformActionEvent;
 use Skyline\CMS\Security\Exception\InvalidUserException;
+use Skyline\CMS\Security\Exception\RequiredGroupMembershipException;
+use Skyline\CMS\Security\Exception\RequiredRolesException;
 use Skyline\CMS\Security\Exception\RequiredTokenException;
 use Skyline\CMS\Security\Exception\RequiredUsernameException;
 use Skyline\CMS\Security\SecurityTrait;
 use Skyline\CMS\Security\UserSystem\User;
+use Skyline\CMS\Security\UserSystem\UserProvider;
 use Skyline\Render\Context\DefaultRenderContext;
 use Skyline\Render\Info\RenderInfo;
+use Skyline\Security\Authentication\AbstractAuthenticationService;
 use TASoft\EventManager\EventManager;
 use TASoft\Service\ServiceManager;
 
@@ -76,7 +80,7 @@ class SecurityAccessControlPlugin
             $ctx->setRenderInfo($renderInfo);
             $event->setRenderInformation($renderInfo);
 
-            $this->performCodeUnderChallenge(function() use ($info) {
+            $this->performCodeUnderChallenge(function() use ($info, $event) {
                 if(isset($info["l"])) {
                     $this->requireIdentity($info["l"]);
                 }
@@ -121,6 +125,41 @@ class SecurityAccessControlPlugin
                             }
                         }
 
+                        if($groups) {
+                            $as = $this->getAuthenticationService();
+                            if($as instanceof AbstractAuthenticationService) {
+                                $up = $as->getUserProvider();
+                                if($up instanceof UserProvider) {
+                                    $groups = array_map(function($A) { return strtolower($A); }, $groups);
+                                    $inList = false;
+
+                                    foreach($up->getMemberShip( $user->getUsername() ) as $gid => $name) {
+                                        if(in_array($gid, $groups) || in_array(strtolower($name), $groups)) {
+                                            $inList = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if(!$inList) {
+                                        $e = new RequiredGroupMembershipException("User is not member of specific group", 403);
+                                        $e->setIdentity($this->getIdentity());
+                                        $e->setUsername($user->getUsername());
+                                        throw $e;
+                                    }
+                                } else {
+                                    throw new RequiredGroupMembershipException("Can not verify group membership because your application is using a different user provider", 403);
+                                }
+                            }
+                        }
+
+                        if($roles) {
+                            $as = $this->getAuthorizationService();
+                            if(!$as->grantAccess($user, $event, $roles)) {
+                                $e = new RequiredRolesException("Action not permitted", 403);
+                                $e->setUser($user);
+                                throw $e;
+                            }
+                        }
                     } else {
                         $e = new InvalidUserException("User %s is not supported by Skyline CMS", 403, NULL, $user->getUsername());
                         $e->setIdentity($this->getIdentity());
