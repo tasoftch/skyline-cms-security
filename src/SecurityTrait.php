@@ -71,7 +71,7 @@ trait SecurityTrait
      * @param callable $code
      * @param ChallengeInterface|string|null $preferredChallenge    A preferred challenge. Can also be a valid challenge service name
      */
-    public function performCodeUnderChallenge(callable $code, $preferredChallenge = NULL) {
+    protected function performCodeUnderChallenge(callable $code, $preferredChallenge = NULL) {
         try {
             call_user_func($code);
         } catch (SecurityException $exception) {
@@ -132,7 +132,7 @@ trait SecurityTrait
      * @param IdentityInterface $minimalFound
      * @return IdentityInterface|null
      */
-    public function getIdentity($minimalReliability = 0, IdentityInterface &$minimalFound = NULL): ?IdentityInterface {
+    protected function getIdentity($minimalReliability = 0, IdentityInterface &$minimalFound = NULL): ?IdentityInterface {
         if(NULL === self::$identity || (self::$identity instanceof IdentityInterface && self::$identity->getReliability() < $minimalReliability)) {
             if($minimalReliability) {
                 $is = $this->getIdentityService();
@@ -159,7 +159,7 @@ trait SecurityTrait
      * @return IdentityInterface
      * @throws LessReliabilityException  Thrown if no identity with a minimal reliability is available
      */
-    public function requireIdentity($minimalReliability = 0): IdentityInterface {
+    protected function requireIdentity($minimalReliability = 0): IdentityInterface {
         $increase = self::$identity ? true : false;
 
         if(!$this->getIdentity($minimalReliability, $minimal)) {
@@ -181,7 +181,7 @@ trait SecurityTrait
      * @param int $minimalReliability
      * @return bool
      */
-    public function hasIdentity($minimalReliability = 0): bool {
+    protected function hasIdentity($minimalReliability = 0): bool {
         if($identity = $this->getIdentity($minimalReliability)) {
             return $identity->getReliability()>=$minimalReliability ? true : false;
         }
@@ -195,7 +195,7 @@ trait SecurityTrait
      * @return UserInterface|null
      * @throws \Throwable
      */
-    public function getUser(): ?UserInterface {
+    protected function getUser(): ?UserInterface {
         if(NULL === self::$user) {
             $identity = $this->getIdentity();
             try {
@@ -212,7 +212,7 @@ trait SecurityTrait
      *
      * @return bool
      */
-    public function hasUser(): bool {
+    protected function hasUser(): bool {
         return self::$user ? true : false;
     }
 
@@ -222,7 +222,7 @@ trait SecurityTrait
      *
      * @return UserInterface
      */
-    public function requireUser(): UserInterface {
+    protected function requireUser(): UserInterface {
         if($this->hasUser())
             return self::$user;
         return self::$user = $this->getAuthenticationService()->authenticateIdentity( $this->getIdentity(), $this->getRequest() );
@@ -233,7 +233,7 @@ trait SecurityTrait
      * @param $requiredRoles
      * @return bool
      */
-    public function grantAccess($toObject, $requiredRoles): bool {
+    protected function grantAccess($toObject, $requiredRoles): bool {
         try {
             if($user = $this->getUser()) {
                 return $this->getAuthorizationService()->grantAccess($user, $toObject, $requiredRoles);
@@ -249,7 +249,7 @@ trait SecurityTrait
      * @param $toObject
      * @param $requiredRoles
      */
-    public function requireAccess($toObject, $requiredRoles) {
+    protected function requireAccess($toObject, $requiredRoles) {
         if(!$this->getAuthorizationService()->grantAccess($this->requireUser(), $toObject, $requiredRoles)) {
             $e = new AuthorizationException("Operation is not permitted", 403);
             $e->setUser(self::$user);
@@ -259,37 +259,37 @@ trait SecurityTrait
 
 
     // Supporter methods
-    public function getIdentityService(): IdentityServiceInterface {
+    protected function getIdentityService(): IdentityServiceInterface {
         /** @var IdentityServiceInterface $s */
         $s = ServiceManager::generalServiceManager()->get( 'identityService' );
         return $s;
     }
 
-    public function getAuthenticationService(): AuthenticationServiceInterface {
+    protected function getAuthenticationService(): AuthenticationServiceInterface {
         /** @var AuthenticationServiceInterface $s */
         $s = ServiceManager::generalServiceManager()->get( 'authenticationService' );
         return $s;
     }
 
-    public function getAuthorizationService(): AuthorizationServiceInterface {
+    protected function getAuthorizationService(): AuthorizationServiceInterface {
         /** @var AuthorizationServiceInterface $s */
         $s = ServiceManager::generalServiceManager()->get( 'authorizationService' );
         return $s;
     }
 
-    public function getChallengeManager(): ChallengeManager {
+    protected function getChallengeManager(): ChallengeManager {
         /** @var ChallengeManager $s */
         $s = ServiceManager::generalServiceManager()->get( 'challengeManager' );
         return $s;
     }
 
-    public function getRequest(): Request {
+    protected function getRequest(): Request {
         /** @var Request $s */
         $s = ServiceManager::generalServiceManager()->get( 'request' );
         return $s;
     }
 
-    public function getResponse(): Response {
+    protected function getResponse(): Response {
         /** @var Response $s */
         $s = ServiceManager::generalServiceManager()->get( 'response' );
         return $s;
