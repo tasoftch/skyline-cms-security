@@ -205,8 +205,6 @@ ORDER BY role") as $record) {
             }
 
 
-            var_dump($roles);
-
             return new User($user, $roles);
         }
         return NULL;
