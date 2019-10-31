@@ -83,10 +83,12 @@ class SecurityAccessControlPlugin
             $this->performCodeUnderChallenge(function() use ($info, $event) {
                 if(isset($info["l"])) {
                     $this->requireIdentity($info["l"]);
+                    ServiceManager::generalServiceManager()->set("identity", $this->getIdentity());
                 }
 
                 if($users = $info["t"] ?? NULL) {
                     $token = $this->requireIdentity()->getToken();
+
                     $ok = false;
                     foreach ($users as $user) {
                         if(strcasecmp($user, $token) === 0) {
@@ -100,6 +102,8 @@ class SecurityAccessControlPlugin
                         $e->setToken($token);
                         throw $e;
                     }
+
+                    ServiceManager::generalServiceManager()->set("identity", $this->getIdentity());
                 }
 
                 $users = $info["u"] ?? [];
@@ -108,6 +112,7 @@ class SecurityAccessControlPlugin
 
                 if($users||$groups||$roles||($info["a"] ?? false)) {
                     $user = $this->requireUser();
+                    ServiceManager::generalServiceManager()->set("user", $user);
                     if($user instanceof User) {
                         if($users) {
                             $inList = false;
