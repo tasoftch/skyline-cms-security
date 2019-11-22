@@ -32,42 +32,58 @@
  *
  */
 
-namespace Skyline\CMS\Security\Identity;
+namespace Skyline\CMS\Security\Tool;
 
-
-use Skyline\Security\Identity\IdentityServiceInterface;
-use TASoft\Service\Container\AbstractContainer;
+use Skyline\CMS\Security\Identity\IdentityInstaller;
+use Skyline\CMS\Security\SecurityTrait;
+use Skyline\Security\Identity\IdentityInterface;
+use Symfony\Component\HttpFoundation\Response;
 use TASoft\Service\ServiceManager;
+use TASoft\Util\PDO;
 
-class IdentityInstallerServiceFactory extends AbstractContainer
+/**
+ * The user tool allows your application several actions around users, groups and roles.
+ * @package Skyline\CMS\Security
+ */
+class UserTool
 {
-    const IDENTITY_SERVICE_NAME = 'identityService';
+    const SERVICE_NAME = 'userTool';
+    use SecurityTrait;
 
-    const INSTALLABLES = 'installables';
-
-    private $configuration;
+    /** @var PDO */
+    private $PDO;
 
     /**
-     * @return mixed
+     * SecurityTool constructor.
+     * @param $PDO
      */
-    public function getConfiguration()
+    public function __construct($PDO)
     {
-        return $this->configuration;
+        $this->PDO = $PDO;
     }
 
     /**
-     * @param mixed $configuration
+     * Performs a logout for a given identity or the current logged user's identity
+     *
+     * @param IdentityInterface|NULL $identity
+     * @return bool
      */
-    public function setConfiguration($configuration): void
-    {
-        $this->configuration = $configuration;
-    }
+    public function logoutIdentity(IdentityInterface $identity = NULL): bool {
+        if(!$identity)
+            $identity = $this->getIdentity();
 
-    protected function loadInstance()
-    {
-        $serviceName = $this->getConfiguration()[ static::IDENTITY_SERVICE_NAME ];
-        /** @var IdentityServiceInterface $is */
-        $is = ServiceManager::generalServiceManager()->get($serviceName);
-        return new IdentityInstaller($this->getConfiguration()[ static::INSTALLABLES ]->toArray(), $is);
+        /** @var IdentityInstaller $installer */
+        $installer = ServiceManager::generalServiceManager()->get( IdentityInstaller::SERVICE_NAME );
+
+
+        /** @var Response $response */
+        $response = ServiceManager::generalServiceManager()->get("response");
+
+        $done = true;
+        foreach($installer->getReachableProviders() as $provider) {
+            if(!$provider->uninstallIdentity($identity, $response))
+                $done = false;
+        }
+        return $done;
     }
 }

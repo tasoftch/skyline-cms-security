@@ -47,6 +47,8 @@ use TASoft\Service\ServiceManager;
 
 class IdentityInstaller implements AuthenticationPostValidatorInterface
 {
+    const SERVICE_NAME = 'identityInstaller';
+
     /** @var array */
     private $mappings;
     /** @var IdentityServiceInterface */
@@ -81,7 +83,12 @@ class IdentityInstaller implements AuthenticationPostValidatorInterface
         return $this->identityService;
     }
 
-    private function getReachableProviders(): array {
+    /**
+     * Recursively finds all providers that might be part of a ChainProvider
+     *
+     * @return IdentityProviderInterface[]
+     */
+    public function getReachableProviders(): array {
         if($this->_reachableProviders === NULL) {
             $this->_reachableProviders = [];
 
@@ -117,6 +124,9 @@ class IdentityInstaller implements AuthenticationPostValidatorInterface
         return NULL;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function grantAfterAuthentication(IdentityInterface $identity, ?UserInterface $user, Request $request): bool
     {
         /** @var Response $response */

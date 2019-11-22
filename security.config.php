@@ -39,6 +39,7 @@ use Skyline\CMS\Security\Challenge\TemplateChallenge;
 use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\CMS\Security\Identity\IdentityInstallerServiceFactory;
 use Skyline\CMS\Security\Identity\IdentityServiceFactory;
+use Skyline\CMS\Security\Tool\UserTool;
 use Skyline\CMS\Security\UserSystem\PermissionChangedValidator;
 use Skyline\CMS\Security\UserSystem\UserProvider;
 use Skyline\Kernel\Config\MainKernelConfig;
@@ -232,11 +233,11 @@ return [
                     ]
                 ],
                 AuthenticationServiceFactory::ENABLED_VALIDATORS => '%security.validators.enabled%',
-                AuthenticationServiceFactory::VALIDATOR_INSTALLER_NAME => IdentityInstallerServiceFactory::SERVICE_NAME
+                AuthenticationServiceFactory::VALIDATOR_INSTALLER_NAME => IdentityInstaller::SERVICE_NAME
             ],
             AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthenticationService::class
         ],
-        IdentityInstallerServiceFactory::SERVICE_NAME => [
+        IdentityInstaller::SERVICE_NAME => [
             AbstractFileConfiguration::SERVICE_CONTAINER => IdentityInstallerServiceFactory::class,
             AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
                 IdentityInstallerServiceFactory::IDENTITY_SERVICE_NAME => IdentityServiceFactory::IDENTITY_SERVICE,
@@ -275,6 +276,13 @@ return [
                 AuthorizationServiceFactory::ALLOW_IF_EQUAL => '%security.authorization.allowIfEqualGrantedAndDenied%',
             ],
             AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthorizationService::class
+        ],
+
+        UserTool::SERVICE_NAME => [
+            AbstractFileConfiguration::SERVICE_CLASS => UserTool::class,
+            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                'pdo' => '$PDO'
+            ]
         ]
     ]
 ];
