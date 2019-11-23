@@ -79,7 +79,7 @@ class UserTool
      * @inheritDoc
      * Forward trait method
      */
-    protected function hasIdentity($minimalReliability = 0): bool
+    public function hasIdentity($minimalReliability = 0): bool
     {
         return $this->_t_hasIdentity($minimalReliability);
     }
@@ -97,7 +97,7 @@ class UserTool
      * @inheritDoc
      * Forward trait method
      */
-    protected function requireIdentity($minimalReliability = 0): IdentityInterface
+    public function requireIdentity($minimalReliability = 0): IdentityInterface
     {
         return $this->_t_requireIdentity($minimalReliability);
     }
@@ -106,7 +106,7 @@ class UserTool
      * @inheritDoc
      * Forward trait method
      */
-    protected function hasUser(): bool
+    public function hasUser(): bool
     {
         return $this->_t_hasUser();
     }
@@ -115,7 +115,7 @@ class UserTool
      * @inheritDoc
      * Forward trait method
      */
-    protected function getUser(): ?UserInterface
+    public function getUser(): ?UserInterface
     {
         return $this->_t_getUser();
     }
@@ -124,7 +124,7 @@ class UserTool
      * @inheritDoc
      * Forward trait method
      */
-    protected function requireUser(): UserInterface
+    public function requireUser(): UserInterface
     {
         return $this->_t_requireUser();
     }
@@ -234,4 +234,6 @@ class UserTool
         }
         return false;
     }
+
+
 }
