@@ -45,8 +45,6 @@ use TASoft\Util\PDO;
 
 class UserRoleTool extends AbstractSecurityTool
 {
-    use SecurityTrait;
-
     const SERVICE_NAME = 'roleTool';
 
     /** @var PDO */
