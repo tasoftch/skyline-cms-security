@@ -61,9 +61,9 @@ class UserProvider implements UserProviderInterface, UserProviderAwareInterface,
         $this->PDO->inject("UPDATE SKY_USER SET options = ? WHERE username = ?")->send([$options, $forUser->getUsername()]);
     }
 
-    public function setCredentials(string $credentials, UserInterface $forUser)
+    public function setCredentials(string $credentials, UserInterface $forUser, $options)
     {
-        $this->PDO->inject("UPDATE SKY_USER SET credentiala = ? WHERE username = ?")->send([$credentials, $forUser->getUsername()]);
+        $this->PDO->inject("UPDATE SKY_USER SET credentials = ? WHERE username = ?")->send([$credentials, $forUser->getUsername()]);
     }
 
     public function getUsernames(): array

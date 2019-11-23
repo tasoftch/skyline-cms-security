@@ -34,26 +34,160 @@
 
 namespace Skyline\CMS\Security\Tool;
 
-
 use Skyline\CMS\Security\SecurityTrait;
-use TASoft\Util\PDO;
+use Skyline\CMS\Security\Tool\Token\PasswordResetToken;
+use Skyline\CMS\Security\Tool\Token\TokenInterface;
+use Skyline\Security\Authentication\AuthenticationService;
+use Skyline\Security\User\AdvancedUserInterface;
+use Skyline\Security\User\Provider\MutableUserProviderInterface;
+use Skyline\Security\User\Provider\UserProviderInterface;
+use Skyline\Security\User\UserInterface;
+use TASoft\Service\ServiceManager;
 
-class PasswordResetTool
+class PasswordResetTool extends AbstractSecurityTool
 {
     const SERVICE_NAME = 'passwordResetTool';
+    const CRYPTING_KEY = 'security.tools.password-reset';
+
+    const ERROR_CODE_INVALID_TOKEN = 102;
+    const ERROR_CODE_TIME_LIMIT_REACHED = 103;
+    const ERROR_CODE_NO_USER_PROVIDER_FOUND = 110;
+    const ERROR_CODE_NO_USER_FOUND = 404;
+    const ERROR_CODE_NOT_DEACTIVATED = 521;
+
+    const ERROR_CODE_IMMUTABLE_PROVIDER = PasswordResetToken::ERROR_CODE_IMMUTABLE_PROVIDER;
+    const ERROR_CODE_NO_PASSWORD_ENCODER_AVAILABLE = 530;
+    const ERROR_CODE_INVALID_ENCODED_PASSWORD = 531;
+
     use SecurityTrait;
 
-    /** @var PDO */
-    private $PDO;
-
     /**
-     * PasswordResetTool constructor.
-     * @param PDO $PDO
+     * This method prepares a user to perform a password reset request.
+     *
+     * @param $anyUserinfo
+     * @param bool $deactivateUser
+     * @return PasswordResetToken|null
      */
-    public function __construct(PDO $PDO)
-    {
-        $this->PDO = $PDO;
+    public function makePasswordResetToken($anyUserinfo, bool $deactivateUser = false): ?PasswordResetToken {
+        if(ServiceManager::generalServiceManager()->getParameter( 'security.allows-password-reset' )) {
+            $service = $this->getAuthenticationService();
+            if(method_exists($service, 'getUserProvider')) {
+                /** @var UserProviderInterface $userProvider */
+                $userProvider = $service->getUserProvider();
+                if($user = $userProvider->loadUserWithToken( $anyUserinfo )) {
+                    if(!($userProvider instanceof MutableUserProviderInterface))
+                        return new PasswordResetToken(false, $user, "", PasswordResetToken::ERROR_CODE_IMMUTABLE_PROVIDER);
+
+                    if($deactivateUser) {
+                        if($user instanceof AdvancedUserInterface) {
+                            if($user->getOptions() & AdvancedUserInterface::OPTION_DEACTIVATED) {
+                                return new PasswordResetToken(false, $user, "", PasswordResetToken::ERROR_CODE_USER_ALREADY_DEACTIVATED);
+                            } else {
+                                if(!$userProvider->setOptions( $user->getOptions() | AdvancedUserInterface::OPTION_DEACTIVATED, $user ))
+                                    return new PasswordResetToken(false, $user, "", PasswordResetToken::ERROR_CODE_USER_DEACTIVATION_FAILED);
+                            }
+                        }
+                    }
+
+                    $data = serialize([
+                        time(),
+                        $anyUserinfo,
+                        $deactivateUser
+                    ]);
+                    $token = $this->encodeData($data);
+                    return new PasswordResetToken(true, $user, $token, 0);
+                } else {
+                    return new PasswordResetToken(false, NULL, "", PasswordResetToken::ERROR_CODE_USER_NOT_FOUND);
+                }
+            }
+        }
+        return NULL;
     }
 
+    /**
+     * Validates a password reset token.
+     * If this method returns true, then the token is valid and the user may enter a new password under this token
+     *
+     * @param string|TokenInterface $token
+     * @param UserInterface|null $user          The user if available
+     * @param int $errorCode                    An integral number indicating, what went wrong. See class constants ERROR_CODE_*
+     * @param int $remainingTime                Remaining seconds until the token gets invalid
+     * @return bool
+     */
+    public function validatePasswordResetToken($token, UserInterface &$user = NULL, &$errorCode = -1, int &$remainingTime = 0): bool {
+        if($token instanceof TokenInterface)
+            $token = $token->getToken();
 
+        $data = $this->decodeData($token);
+
+        error_clear_last();
+        $data = @unserialize( $data );
+        if(error_get_last() || !is_array($data) || count($data) != 3) {
+            error_clear_last();
+           $errorCode = static::ERROR_CODE_INVALID_TOKEN;
+           return false;
+        }
+
+        list($time, $anyUserInfo, $deactivateUser) = $data;
+        $diff = time() - $time;
+
+        $maximalInterval = ServiceManager::generalServiceManager()->getParameter("security.tool.password-reset.maximal-time");
+
+        $remainingTime = max(0, $maximalInterval - $diff);
+
+        if($diff < $maximalInterval) {
+            $service = $this->getAuthenticationService();
+            if(method_exists($service, 'getUserProvider')) {
+                /** @var UserProviderInterface $userProvider */
+                $userProvider = $service->getUserProvider();
+                if($user = $userProvider->loadUserWithToken($anyUserInfo)) {
+                    if($deactivateUser) {
+                        if($user instanceof AdvancedUserInterface) {
+                            if($user->getOptions() & AdvancedUserInterface::OPTION_DEACTIVATED) {} else {
+                                $errorCode = static::ERROR_CODE_NOT_DEACTIVATED;
+                                return false;
+                            }
+                        }
+                    }
+                    $errorCode = 0;
+                    return true;
+                } else
+                    $errorCode = static::ERROR_CODE_NO_USER_FOUND;
+            } else
+                $errorCode = static::ERROR_CODE_NO_USER_PROVIDER_FOUND;
+        } else {
+            $errorCode = static::ERROR_CODE_TIME_LIMIT_REACHED;
+            return false;
+        }
+
+        return false;
+    }
+
+    /**
+     * Use this method to specify a new password for the user with a specified token
+     *
+     * @param string|TokenInterface $token
+     * @param string $newPlainPassword
+     * @param int $errorCode
+     * @return bool
+     */
+    public function updatePassword($token, string $newPlainPassword, &$errorCode = -1) {
+        if($this->validatePasswordResetToken($token, $user, $errorCode)) {
+            /** @var AuthenticationService $service */
+            $service = $this->getAuthenticationService();
+            if(method_exists($service, 'getPasswordEncoder')) {
+                $password = $service->getPasswordEncoder()->encodePassword($newPlainPassword, $options);
+                if($password) {
+                    $userProvider = $service->getUserProvider();
+                    if($userProvider instanceof MutableUserProviderInterface) {
+                        return $userProvider->setCredentials($password, $user, $options) ? true : false;
+                    } else
+                        $errorCode = static::ERROR_CODE_IMMUTABLE_PROVIDER;
+                } else
+                    $errorCode = static::ERROR_CODE_INVALID_ENCODED_PASSWORD;
+            } else
+                $errorCode = static::ERROR_CODE_NO_PASSWORD_ENCODER_AVAILABLE;
+        }
+        return false;
+    }
 }

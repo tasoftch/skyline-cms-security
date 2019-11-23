@@ -15,6 +15,7 @@
   },
   "require" : {
     "php": "^7.2",
+    "ext-openssl": "*",
     "skyline/security": "dev-master",
     "skyline/core-application": "dev-master",
     "skyline/pdo": "dev-master"

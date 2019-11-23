@@ -287,10 +287,7 @@ return [
             ]
         ],
         PasswordResetTool::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CLASS => PasswordResetTool::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'pdo' => '$PDO'
-            ]
+            AbstractFileConfiguration::SERVICE_CLASS => PasswordResetTool::class
         ]
     ]
 ];

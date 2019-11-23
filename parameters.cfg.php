@@ -142,5 +142,13 @@ return [
     // Authorization
     'security.authorization.strategy' => AbstractAuthorizationService::STRATEGY_AFFIRMATIVE,
     'security.authorization.allowIfAllAbstain' => false,
-    'security.authorization.allowIfEqualGrantedAndDenied' => true
+    'security.authorization.allowIfEqualGrantedAndDenied' => true,
+
+    // Tools
+    'security.tools.secret' => md5(uniqid()),
+
+    // Password Reset Tool
+
+    // Maximal allowed time interval between reset password request and really password reset action
+    'security.tool.password-reset.maximal-time' => 300
 ];
