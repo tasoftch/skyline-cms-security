@@ -120,7 +120,6 @@ return [
     "security.password.ignoreCase" => false,
 
     "security.user.anonymous" => 0,
-    "security.allows-remember-me" => false,
 
     "security.brute-force.client.maximal.attempts" => 3,
     "security.brute-force.client.blocking.interval" => 900,
@@ -136,7 +135,9 @@ return [
         // AuthenticationServiceFactory::VALIDATOR_PERMISSION_CHANGED   // optional, if enabled, a logged user gets logged out if an administrator changes its permissions while session or remember-me session
     ],
 
-    'security.http-post.allows-password-reset' => true,
+    "security.allows-remember-me" => false,
+    'security.allows-password-reset' => true,
+    'security.allows-new-membership' => false,
 
     // Authorization
     'security.authorization.strategy' => AbstractAuthorizationService::STRATEGY_AFFIRMATIVE,
