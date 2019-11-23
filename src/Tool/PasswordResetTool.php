@@ -176,6 +176,7 @@ class PasswordResetTool extends AbstractSecurityTool
             /** @var AuthenticationService $service */
             $service = $this->getAuthenticationService();
             if(method_exists($service, 'getPasswordEncoder')) {
+                $options = [];
                 $password = $service->getPasswordEncoder()->encodePassword($newPlainPassword, $options);
                 if($password) {
                     $userProvider = $service->getUserProvider();
