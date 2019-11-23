@@ -36,7 +36,10 @@ namespace Skyline\CMS\Security\Tool;
 
 use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\CMS\Security\SecurityTrait;
+use Skyline\CMS\Security\UserSystem\User;
 use Skyline\Security\Identity\IdentityInterface;
+use Skyline\Security\Role\RoleInterface;
+use Skyline\Security\User\UserInterface;
 use Symfony\Component\HttpFoundation\Response;
 use TASoft\Service\ServiceManager;
 use TASoft\Util\PDO;
@@ -48,10 +51,21 @@ use TASoft\Util\PDO;
 class UserTool
 {
     const SERVICE_NAME = 'userTool';
-    use SecurityTrait;
+    use SecurityTrait {
+        hasIdentity as _t_hasIdentity;
+        getIdentity as _t_getIdentity;
+        requireIdentity as _t_requireIdentity;
+
+        hasUser as _t_hasUser;
+        getUser as _t_getUser;
+        requireUser as _t_requireUser;
+    }
 
     /** @var PDO */
     private $PDO;
+
+    private $cachedGroups;
+    private $cachedUserRoles;
 
     /**
      * SecurityTool constructor.
@@ -63,7 +77,63 @@ class UserTool
     }
 
     /**
+     * @inheritDoc
+     * Forward trait method
+     */
+    protected function hasIdentity($minimalReliability = 0): bool
+    {
+        return $this->_t_hasIdentity($minimalReliability);
+    }
+
+    /**
+     * @inheritDoc
+     * Forward trait method
+     */
+    public function getIdentity($minimalReliability = 0, IdentityInterface &$minimalFound = NULL): ?IdentityInterface
+    {
+        return $this->_t_getIdentity($minimalReliability, $minimalFound);
+    }
+
+    /**
+     * @inheritDoc
+     * Forward trait method
+     */
+    protected function requireIdentity($minimalReliability = 0): IdentityInterface
+    {
+        return $this->_t_requireIdentity($minimalReliability);
+    }
+
+    /**
+     * @inheritDoc
+     * Forward trait method
+     */
+    protected function hasUser(): bool
+    {
+        return $this->_t_hasUser();
+    }
+
+    /**
+     * @inheritDoc
+     * Forward trait method
+     */
+    protected function getUser(): ?UserInterface
+    {
+        return $this->_t_getUser();
+    }
+
+    /**
+     * @inheritDoc
+     * Forward trait method
+     */
+    protected function requireUser(): UserInterface
+    {
+        return $this->_t_requireUser();
+    }
+
+
+    /**
      * Performs a logout for a given identity or the current logged user's identity
+     * IMPORTANT: Always use this method for logout in your application to ensure further version compatibility with Skyline CMS.
      *
      * @param IdentityInterface|NULL $identity
      * @return bool
@@ -85,5 +155,122 @@ class UserTool
                 $done = false;
         }
         return $done;
+    }
+
+    /**
+     * Returns all groups the current logged user is member of
+     *
+     * @return null|array        Keys as group id, values as group names or null, if no user logged
+     */
+    public function getGroups(): ?array {
+        if($user = $this->getUser()) {
+            if(NULL === $this->cachedGroups) {
+                $this->cachedGroups = [];
+
+                if($user instanceof User) {
+                    $uid = $user->getId();
+                    $gen = $this->PDO->select("SELECT
+   groupid as id,
+   name
+FROM SKY_USER_GROUP
+JOIN SKY_GROUP ON groupid = id
+WHERE user = $uid");
+                } else {
+                    $gen = $this->PDO->select("SELECT
+   SKY_GROUP.id,
+   name
+FROM SKY_USER
+JOIN SKY_USER_GROUP ON user = id
+JOIN SKY_GROUP ON groupid = SKY_GROUP.id
+WHERE username = ?", [ $user->getUsername() ]);
+                }
+
+                foreach($gen as $record) {
+                    $this->cachedGroups[ $record["id"] * 1 ] = $record["name"];
+                }
+            }
+
+            return $this->cachedGroups;
+        }
+        return NULL;
+    }
+
+    /**
+     * Checks, if the logged user is member of a given group
+     *
+     * @param int|string $group  A group name or group id
+     * @return bool
+     */
+    public function isMember($group): bool {
+        if($user = $this->getUser()) {
+            $g = $this->getGroups();
+            return isset($g[$group]) || in_array($group, $g);
+        }
+        return false;
+    }
+
+    /**
+     * Returns all roles the user has
+     * @return array|null       The roles as strings
+     */
+    public function getUserRoles(): ?array {
+        if($user = $this->getUser()) {
+            if(NULL === $this->cachedUserRoles)
+                $this->cachedUserRoles = array_map(function($r) {if($r instanceof RoleInterface){return$r->getRole();}else{return(string)$r;}}, $user->getRoles());
+            return $this->cachedUserRoles;
+        }
+        return NULL;
+    }
+
+    /**
+     * Checks, if the current logged user has one specific role
+     *
+     * @param string|RoleInterface $role
+     * @return bool
+     */
+    public function hasRole($role): bool {
+        if($user = $this->getUser()) {
+            if($role instanceof RoleInterface)
+                $role = $role->getRole();
+            return in_array($role, $this->getUserRoles());
+        }
+        return false;
+    }
+
+    /**
+     * Checks, if the current logged user has the required roles.
+     * You may pass an array with role names, so the user must have all given roles or
+     * a string in the following format
+     *
+     * The symbol && combines two roles as AND, so the user must have both roles
+     * The symbol || combines two roles as OR, so the user must have at least one of the two roles
+     *
+     *
+     *  "ROLE.1 && ROLE.2"              => true, if the user has ROLE.1 and ROLE.2
+     *  "ROLE.1 || ROLE.2"              => true, if the user has ROLE.1 or ROLE.2
+     *  "(ROLE.1 || ROLE.2) && ROLE.3"  => true, if the user has ROLE.1 or ROLE.2, and if so then has ROLE.3
+     *
+     * @param string|iterable $roles
+     * @return bool
+     */
+    public function hasRoles($roles): bool {
+        if($user = $this->getUser()) {
+            if(is_iterable($roles)) {
+                foreach($roles as $role) {
+                    if(!$this->hasRole($role))
+                        return false;
+                }
+                return true;
+            } else {
+                $roles = preg_replace_callback("/([a-z_\.0-9]+)/i", function($ms) {
+                    $role = $ms[1];
+                    if($this->hasRole($role))
+                        return 1;
+                    return 0;
+                }, $roles);
+                return eval("return $roles;") ? true : false;
+            }
+        }
+        return false;
     }
 }

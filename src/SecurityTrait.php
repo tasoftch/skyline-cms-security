@@ -51,6 +51,7 @@ use Skyline\Security\User\UserInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use TASoft\Service\ServiceManager;
+use Throwable;
 
 /**
  * The security trait should be used to extend action controllers by importing several security features.
@@ -193,7 +194,6 @@ trait SecurityTrait
      * Tries to get an authenticated user
      *
      * @return UserInterface|null
-     * @throws \Throwable
      */
     protected function getUser(): ?UserInterface {
         if(NULL === self::$user) {
@@ -202,6 +202,8 @@ trait SecurityTrait
                 self::$user = $this->getAuthenticationService()->authenticateIdentity($identity, $this->getRequest());
             } catch (SecurityException $exception) {
                 self::$user = false;
+            } catch (Throwable $exception) {
+                trigger_error($exception->getMessage(), E_USER_WARNING);
             }
         }
         return self::$user ?: NULL;
@@ -221,6 +223,7 @@ trait SecurityTrait
      * This method requires a user now.
      *
      * @return UserInterface
+     * @throws Throwable
      */
     protected function requireUser(): UserInterface {
         if($this->hasUser())
@@ -238,7 +241,7 @@ trait SecurityTrait
             if($user = $this->getUser()) {
                 return $this->getAuthorizationService()->grantAccess($user, $toObject, $requiredRoles);
             }
-        } catch (\Throwable $throwable) {
+        } catch (Throwable $throwable) {
         }
         return false;
     }
@@ -248,6 +251,7 @@ trait SecurityTrait
      *
      * @param $toObject
      * @param $requiredRoles
+     * @throws Throwable
      */
     protected function requireAccess($toObject, $requiredRoles) {
         if(!$this->getAuthorizationService()->grantAccess($this->requireUser(), $toObject, $requiredRoles)) {
