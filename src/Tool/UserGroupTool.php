@@ -34,23 +34,20 @@
 
 namespace Skyline\CMS\Security\Tool;
 
-
-use Skyline\CMS\Security\SecurityTrait;
+use Skyline\CMS\Security\UserSystem\Group;
 use Skyline\CMS\Security\UserSystem\User;
+use Skyline\Security\Exception\SecurityException;
 use TASoft\Util\PDO;
 
-class UserGroupTool
+class UserGroupTool extends AbstractSecurityTool
 {
-    use SecurityTrait;
-
     const SERVICE_NAME = 'groupTool';
     /** @var PDO */
     private $PDO;
 
 
     private $cachedGroups;
-    private $cachedDescriptions = [];
-    private $cachedInternal = [];
+    private $groupNamesMap = [];
 
     /**
      * SecurityTool constructor.
@@ -62,84 +59,45 @@ class UserGroupTool
     }
 
     /**
-     * Returns all groups the current logged user is member of
+     * Returns all available groups
      *
      * @return null|array        Keys as group id, values as group names or null, if no user logged
      */
     public function getGroups(): ?array {
-        if($user = $this->getUser()) {
-            if(NULL === $this->cachedGroups) {
-                $this->cachedGroups = [];
-
-                if($user instanceof User) {
-                    $uid = $user->getId();
-                    $gen = $this->PDO->select("SELECT
-   groupid as id,
-   name
-FROM SKY_USER_GROUP
-JOIN SKY_GROUP ON groupid = id
-WHERE user = $uid");
-                } else {
-                    $gen = $this->PDO->select("SELECT
-   SKY_GROUP.id,
-   name
-FROM SKY_USER
-JOIN SKY_USER_GROUP ON user = id
-JOIN SKY_GROUP ON groupid = SKY_GROUP.id
-WHERE username = ?", [ $user->getUsername() ]);
-                }
-
-                foreach($gen as $record) {
-                    $this->cachedGroups[ $record["id"] * 1 ] = $record["name"];
-                }
+        if(NULL === $this->cachedGroups) {
+            $this->cachedGroups = [];
+            foreach($this->PDO->select("SELECT id, name, description, options FROM SKY_GROUP") as $record) {
+                $this->cachedGroups[ $record["id"] * 1 ] = new Group($record);
+                $this->groupNamesMap[ $record["name"] ] = $record["id"]*1;
             }
-
-            return $this->cachedGroups;
         }
-        return NULL;
+
+        return $this->cachedGroups;
     }
 
     /**
-     * Gets the description of a group
-     *
-     * @param int|string $group     groupid or group name
-     * @return string|null
+     * @param string|int $group     A group  name or id
+     * @return Group|null
      */
-    public function getDescription($group) {
-        if(!isset($this->cachedDescriptions[$group])) {
-            $this->cachedDescriptions[$group] = "";
-
-            foreach($this->PDO->select("SELECT
-description, name, id
-FROM SKY_GROUP
-WHERE id = ? OR name = ?
-LIMIT 1", [$group, $group]) as $record) {
-                $this->cachedDescriptions[ $record["id"]*1 ] = $this->cachedDescriptions[ $record["name"] ] = $record[ "description" ];
-            }
-        }
-        return $this->cachedDescriptions[$group];
+    public function getGroup($group): ?Group {
+        $groups = $this->getGroups();
+        if(!is_numeric($group))
+            $group = $this->groupNamesMap[ (string)$group ] ?? -1;
+        return $groups[$group] ?? NULL;
     }
 
     /**
-     * Returns true, if the group is an internal group of Skyline CMS
-     *
-     * @param int|string $group     groupid or group name
-     * @return bool
+     * @param string $name
+     * @param string|NULL $description
+     * @param int $options
+     * @return Group
+     * @throws SecurityException
      */
-    public function isInternal($group): bool {
-        if(!isset($this->cachedInternal[$group])) {
-            $this->cachedInternal[$group] = false;
-
-            foreach($this->PDO->select("SELECT
-internal, name, id
-FROM SKY_GROUP
-WHERE id = ? OR name = ?
-LIMIT 1", [$group, $group]) as $record) {
-                $this->cachedInternal[ $record["id"]*1 ] = $this->cachedInternal[ $record["name"] ] = $record[ "internal" ] ? true : false;
-            }
+    public function addGroup(string $name, string $description = NULL, int $options = 0): Group {
+        if($this->PDO->selectOne("SELECT id FROM SKY_GROUP where name = ?", [$name])["id"] ?? false) {
+            throw new SecurityException("Group $name already exists");
         }
-        return $this->cachedInternal[$group];
+
+        // TODO: later
     }
-
-
 }

@@ -33,43 +33,35 @@
  */
 
 /**
- * ReliabilityOrderTest.php
+ * GroupToolTest.php
  * skyline-cms-security
  *
- * Created on 2019-10-23 15:35 by thomas
+ * Created on 2019-11-23 14:55 by thomas
  */
 
 use PHPUnit\Framework\TestCase;
+use Skyline\CMS\Security\Tool\UserGroupTool;
+use Skyline\CMS\Security\UserSystem\Group;
+use Skyline\PDO\MySQL;
 
-class ReliabilityOrderTest extends TestCase
+class GroupToolTest extends TestCase
 {
-    public function testReliabilityOrder() {
-        $list = [
-            5 => 'alpha',
-            90 => 'beta',
-            49 => 'gamma',
-            32 => 'delta',
-            87 => 'epsilon',
-            13 => 'zeta',
-            21 => 'eta'
-        ];
-
-        ksort($list);
-        $last = 0;
-        $newList = [];
-        foreach($list as $rel => $item) {
-            $newList["$last:$rel"] = $item;
-            $last = $rel+1;
-        }
-
-        $this->assertEquals(array (
-            '0:5' => 'alpha',
-            '6:13' => 'zeta',
-            '14:21' => 'eta',
-            '22:32' => 'delta',
-            '33:49' => 'gamma',
-            '50:87' => 'epsilon',
-            '88:90' => 'beta',
-        ), $newList);
+    private function createTool(): UserGroupTool {
+        $PDO = new MySQL('localhost', 'skyline_dev', 'root', 'tasoftapps', '/tmp/mysql.sock');
+        $tool = new UserGroupTool($PDO);
+        $tool->disableEvents();
+        return $tool;
     }
+
+    public function testGroups() {
+        $tool = $this->createTool();
+
+        $admin = $tool->getGroup("Administrator");
+        $this->assertInstanceOf(Group::class, $admin);
+        $this->assertEquals(1, $admin->getId());
+        $this->assertEquals(0, $admin->getOptions());
+        $this->assertTrue($admin->isInternal());
+    }
+
+
 }
