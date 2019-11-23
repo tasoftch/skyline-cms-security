@@ -64,7 +64,6 @@ class UserTool
     /** @var PDO */
     private $PDO;
 
-    private $cachedGroups;
     private $cachedUserRoles;
 
     /**
@@ -158,44 +157,6 @@ class UserTool
     }
 
     /**
-     * Returns all groups the current logged user is member of
-     *
-     * @return null|array        Keys as group id, values as group names or null, if no user logged
-     */
-    public function getGroups(): ?array {
-        if($user = $this->getUser()) {
-            if(NULL === $this->cachedGroups) {
-                $this->cachedGroups = [];
-
-                if($user instanceof User) {
-                    $uid = $user->getId();
-                    $gen = $this->PDO->select("SELECT
-   groupid as id,
-   name
-FROM SKY_USER_GROUP
-JOIN SKY_GROUP ON groupid = id
-WHERE user = $uid");
-                } else {
-                    $gen = $this->PDO->select("SELECT
-   SKY_GROUP.id,
-   name
-FROM SKY_USER
-JOIN SKY_USER_GROUP ON user = id
-JOIN SKY_GROUP ON groupid = SKY_GROUP.id
-WHERE username = ?", [ $user->getUsername() ]);
-                }
-
-                foreach($gen as $record) {
-                    $this->cachedGroups[ $record["id"] * 1 ] = $record["name"];
-                }
-            }
-
-            return $this->cachedGroups;
-        }
-        return NULL;
-    }
-
-    /**
      * Checks, if the logged user is member of a given group
      *
      * @param int|string $group  A group name or group id
@@ -203,7 +164,7 @@ WHERE username = ?", [ $user->getUsername() ]);
      */
     public function isMember($group): bool {
         if($user = $this->getUser()) {
-            $g = $this->getGroups();
+            $g = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME )->getGroups();
             return isset($g[$group]) || in_array($group, $g);
         }
         return false;

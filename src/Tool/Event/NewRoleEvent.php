@@ -32,42 +32,30 @@
  *
  */
 
-namespace Skyline\CMS\Security\Tool;
+namespace Skyline\CMS\Security\Tool\Event;
 
 
-use TASoft\Service\ServiceManager;
+use Skyline\CMS\Security\UserSystem\Role;
+use TASoft\EventManager\Event\Event;
 
-abstract class AbstractSecurityTool
+class NewRoleEvent extends Event
 {
-    const CRYPTING_KEY = '';
-    protected $disableEvents = false;
+    /** @var Role */
+    private $role;
 
     /**
-     * Call this method to disable all events that might be triggered by security tools
+     * @return Role
      */
-    public function disableEvents() {
-        $this->disableEvents = true;
+    public function getRole(): Role
+    {
+        return $this->role;
     }
 
     /**
-     * @param $data
-     * @return string
+     * @param Role $role
      */
-    protected function encodeData($data) {
-        $key = hash( 'sha256', static::CRYPTING_KEY );
-        $iv = substr( hash( 'sha256', ServiceManager::generalServiceManager()->getParameter("security.tools.secret")  ), 0, 16 );
-
-        return base64_encode( openssl_encrypt( $data, "AES-256-CBC", $key, 0, $iv ) );
-    }
-
-    /**
-     * @param $data
-     * @return string
-     */
-    protected function decodeData($data) {
-        $key = hash( 'sha256', static::CRYPTING_KEY );
-        $iv = substr( hash( 'sha256', ServiceManager::generalServiceManager()->getParameter("security.tools.secret") ) , 0, 16 );
-
-        return openssl_decrypt( base64_decode($data), "AES-256-CBC", $key, 0, $iv  );
+    public function setRole(Role $role): void
+    {
+        $this->role = $role;
     }
 }

@@ -11,7 +11,10 @@
   "autoload": {
     "psr-4": {
       "Skyline\\CMS\\Security\\" : "src"
-    }
+    },
+    "files": [
+      "Constants.php"
+    ]
   },
   "require" : {
     "php": "^7.2",

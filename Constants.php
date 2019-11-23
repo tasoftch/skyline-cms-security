@@ -32,42 +32,6 @@
  *
  */
 
-namespace Skyline\CMS\Security\Tool;
-
-
-use TASoft\Service\ServiceManager;
-
-abstract class AbstractSecurityTool
-{
-    const CRYPTING_KEY = '';
-    protected $disableEvents = false;
-
-    /**
-     * Call this method to disable all events that might be triggered by security tools
-     */
-    public function disableEvents() {
-        $this->disableEvents = true;
-    }
-
-    /**
-     * @param $data
-     * @return string
-     */
-    protected function encodeData($data) {
-        $key = hash( 'sha256', static::CRYPTING_KEY );
-        $iv = substr( hash( 'sha256', ServiceManager::generalServiceManager()->getParameter("security.tools.secret")  ), 0, 16 );
-
-        return base64_encode( openssl_encrypt( $data, "AES-256-CBC", $key, 0, $iv ) );
-    }
-
-    /**
-     * @param $data
-     * @return string
-     */
-    protected function decodeData($data) {
-        $key = hash( 'sha256', static::CRYPTING_KEY );
-        $iv = substr( hash( 'sha256', ServiceManager::generalServiceManager()->getParameter("security.tools.secret") ) , 0, 16 );
-
-        return openssl_decrypt( base64_decode($data), "AES-256-CBC", $key, 0, $iv  );
-    }
-}
+define("SKY_EVENT_ADD_ROLE", "SKY_EVENT_ADD_ROLE");
+define("SKY_EVENT_REMOVE_ROLE", "SKY_EVENT_REMOVE_ROLE");
+define("SKY_EVENT_UPDATE_ROLE", 'SKY_EVENT_UPDATE_ROLE');

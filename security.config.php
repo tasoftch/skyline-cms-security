@@ -40,6 +40,7 @@ use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\CMS\Security\Identity\IdentityInstallerServiceFactory;
 use Skyline\CMS\Security\Identity\IdentityServiceFactory;
 use Skyline\CMS\Security\Tool\PasswordResetTool;
+use Skyline\CMS\Security\Tool\UserGroupTool;
 use Skyline\CMS\Security\Tool\UserTool;
 use Skyline\CMS\Security\UserSystem\PermissionChangedValidator;
 use Skyline\CMS\Security\UserSystem\UserProvider;
@@ -288,6 +289,12 @@ return [
         ],
         PasswordResetTool::SERVICE_NAME => [
             AbstractFileConfiguration::SERVICE_CLASS => PasswordResetTool::class
-        ]
+        ],
+        UserGroupTool::SERVICE_NAME => [
+            AbstractFileConfiguration::SERVICE_CLASS => UserGroupTool::class,
+            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                'pdo' => '$PDO'
+            ]
+        ],
     ]
 ];

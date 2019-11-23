@@ -102,6 +102,8 @@ WHERE username = ?", [$username]) as $group) {
             $roles = [];
             $uid = $user["id"];
 
+
+
             if($this->PDO->getAttribute(PDO::ATTR_DRIVER_NAME) == 'sqlite') {
                 foreach($this->PDO->select("SELECT DISTINCT 
 CASE
