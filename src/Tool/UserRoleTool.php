@@ -34,8 +34,6 @@
 
 namespace Skyline\CMS\Security\Tool;
 
-
-use Skyline\CMS\Security\SecurityTrait;
 use Skyline\CMS\Security\Tool\Event\NewRoleEvent;
 use Skyline\CMS\Security\Tool\Event\UpdateRoleEvent;
 use Skyline\CMS\Security\UserSystem\Role;
