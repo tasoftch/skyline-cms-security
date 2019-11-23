@@ -38,6 +38,7 @@ namespace Skyline\CMS\Security\Authentication;
 use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\Security\Authentication\AuthenticationService;
 use Skyline\Security\Encoder\PasswordEncoderChain;
+use Skyline\Security\Exception\SecurityException;
 use Skyline\Security\User\Provider\ChainUserProvider;
 use TASoft\Service\Container\AbstractContainer;
 use TASoft\Service\Container\ConfiguredServiceContainer;
@@ -55,6 +56,7 @@ class AuthenticationServiceFactory extends AbstractContainer
     const VALIDATORS = 'validators';
 
     const ENABLED_VALIDATORS = 'enabledValidators';
+    const ENABLED_PASSWORD_ENCODERS = 'enabledPasswordEncoders';
 
     const VALIDATOR_CLIENT_BRUTE_FORCE = 'client-bf';
     const VALIDATOR_SERVER_BRUTE_FORCE = 'server-bf';
@@ -111,19 +113,29 @@ class AuthenticationServiceFactory extends AbstractContainer
         }
 
         $passwordEncoders = $this->getConfiguration()[static::PASSWORD_ENCODERS] ?? NULL;
-        if(!$passwordEncoders)
-            throw new \InvalidArgumentException("Authentication service requires at least one password encoder", 403);
+        $enabledPasswordEncoders = $this->getConfiguration()[ static::ENABLED_PASSWORD_ENCODERS ] ?? NULL;
+
+        if(!$enabledPasswordEncoders)
+            throw new \InvalidArgumentException("Authentication service requires at least one enabled password encoder", 403);
 
 
-        if(count($passwordEncoders) > 1) {
+        if(count($enabledPasswordEncoders) > 1) {
             $passwordEncoder = new PasswordEncoderChain();
-            foreach($passwordEncoders as $encoder) {
+            foreach($enabledPasswordEncoders as $encoderClass) {
+                $encoder = $passwordEncoders[ $encoderClass ] ?? NULL;
+                if(!$encoder)
+                    throw new SecurityException("No password encoder specified for $encoderClass");
+
                 $cnt = new ConfiguredServiceContainer("", $encoder, $sm);
                 $passwordEncoder->addEncoder( $cnt->getInstance() );
                 unset($cnt);
             }
         } else {
-            foreach($passwordEncoders as $encoder) {
+            foreach($enabledPasswordEncoders as $encoderClass) {
+                $encoder = $passwordEncoders[ $encoderClass ] ?? NULL;
+                if(!$encoder)
+                    throw new SecurityException("No password encoder specified for $encoderClass");
+
                 $cnt = new ConfiguredServiceContainer("", $encoder, $sm);
                 $passwordEncoder = $cnt->getInstance();
                 unset($cnt);

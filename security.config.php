@@ -234,6 +234,7 @@ return [
                     ]
                 ],
                 AuthenticationServiceFactory::ENABLED_VALIDATORS => '%security.validators.enabled%',
+                AuthenticationServiceFactory::ENABLED_PASSWORD_ENCODERS => '%security.password-encoders.enabled%',
                 AuthenticationServiceFactory::VALIDATOR_INSTALLER_NAME => IdentityInstaller::SERVICE_NAME
             ],
             AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthenticationService::class

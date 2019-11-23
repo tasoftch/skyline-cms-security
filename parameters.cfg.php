@@ -32,9 +32,7 @@
  *
  */
 
-use Skyline\CMS\Security\Identity\IdentityServiceFactory;
 use Skyline\Security\Authorization\AbstractAuthorizationService;
-use Skyline\Security\Authorization\AuthorizationServiceInterface;
 use Skyline\Security\Identity\Provider\Session\RememberMeIdentityProvider;
 use Skyline\Security\Identity\Provider\Session\SessionIdentityProvider;
 
@@ -106,6 +104,19 @@ return [
     ],
 
     // Authentication
+    "security.password-encoders.enabled" => [
+        // Include one of the strong password encoders
+
+        // MessageDigestPasswordEncoder::class,
+        // BCryptPasswordEncoder::class,
+
+
+        // You might include the plaintext password encoders for development reasons
+        // But please never in production!
+
+        // PlaintextSaltPasswordEncoder::class,
+        // PlaintextPasswordEncoder::class
+    ],
     "security.password.ignoreCase" => false,
 
     "security.user.anonymous" => 0,
