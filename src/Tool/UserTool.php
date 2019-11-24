@@ -68,6 +68,7 @@ class UserTool
     private $cachedUserRoles;
     private $cachedUserAttributes;
     private $attributeName2IDMap = [];
+    private $userRoleCache;
 
     /**
      * SecurityTool constructor.
@@ -181,6 +182,7 @@ class UserTool
         if($user = $this->getUser()) {
             if(NULL === $this->cachedUserRoles)
                 $this->cachedUserRoles = array_map(function($r) {if($r instanceof RoleInterface){return$r->getRole();}else{return(string)$r;}}, $user->getRoles());
+            $this->userRoleCache = [];
             return $this->cachedUserRoles;
         }
         return NULL;
@@ -196,7 +198,17 @@ class UserTool
         if($user = $this->getUser()) {
             if($role instanceof RoleInterface)
                 $role = $role->getRole();
-            return in_array($role, $this->getUserRoles());
+            if(!isset($this->userRoleCache[$role])) {
+                $this->userRoleCache[$role] = false;
+                foreach($this->getUserRoles() as $r) {
+                    if(stripos($role, $r) === 0) {
+                        $this->userRoleCache[$role] = true;
+                        break;
+                    }
+                }
+            }
+
+            return $this->userRoleCache[$role];
         }
         return false;
     }
@@ -253,7 +265,7 @@ class UserTool
 
             if(!isset($this->cachedUserAttributes[$uid])) {
                 $this->cachedUserAttributes[$uid] = [];
-                
+
                 foreach($this->PDO->select("SELECT
 id,
        options,
