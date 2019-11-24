@@ -36,6 +36,7 @@ namespace Skyline\CMS\Security\Tool;
 
 use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\CMS\Security\SecurityTrait;
+use Skyline\CMS\Security\Tool\Attribute\AbstractAttribute;
 use Skyline\CMS\Security\UserSystem\User;
 use Skyline\Security\Identity\IdentityInterface;
 use Skyline\Security\Role\RoleInterface;
@@ -65,6 +66,8 @@ class UserTool
     private $PDO;
 
     private $cachedUserRoles;
+    private $cachedUserAttributes;
+    private $attributeName2IDMap = [];
 
     /**
      * SecurityTool constructor.
@@ -79,7 +82,7 @@ class UserTool
      * @inheritDoc
      * Forward trait method
      */
-    public function hasIdentity($minimalReliability = 0): bool
+    protected function hasIdentity($minimalReliability = 0): bool
     {
         return $this->_t_hasIdentity($minimalReliability);
     }
@@ -235,5 +238,60 @@ class UserTool
         return false;
     }
 
+    /**
+     * Gets user attributes
+     *
+     * @param User|NULL $user
+     * @return array|null
+     */
+    public function getAttributes(User $user = NULL): ?array {
+        if(!$user)
+            $user = $this->getUser();
 
+        if($user) {
+            $uid = $user->getId();
+
+            if(!isset($this->cachedUserAttributes[$uid])) {
+                $this->cachedUserAttributes[$uid] = [];
+                
+                foreach($this->PDO->select("SELECT
+id,
+       options,
+       value,
+       valueType,
+       name,
+       description,
+       icon
+FROM SKY_USER_ATTRIBUTE_Q
+JOIN SKY_USER_ATTRIBUTE on attribute = id
+WHERE user = $uid AND enabled = 1
+ORDER BY name") as $record) {
+                    $attr = AbstractAttribute::create($record);
+                    if($attr) {
+                        $this->cachedUserAttributes[$uid][ $record["id"]*1 ] = $attr;
+                        $this->attributeName2IDMap[ strtolower($record["name"]) ] = $record["id"]*1;
+                    }
+
+                    else
+                        trigger_error("Can not create user attribute {$record["name"]}", E_USER_NOTICE);
+                }
+            }
+
+            return $this->cachedUserAttributes[$uid];
+        }
+        return NULL;
+    }
+
+    /**
+     * Gets the required attribute of logged user if available
+     *
+     * @param string|int $attribute  attribute name or id
+     * @return AbstractAttribute|null
+     */
+    public function getAttribute($attribute): ?AbstractAttribute {
+        $attrs = $this->getAttributes();
+        if(!is_numeric($attribute))
+            $attribute = $this->attributeName2IDMap[ strtolower( (string) $attribute) ] ?? -1;
+        return $attrs[ $attribute ] ?? NULL;
+    }
 }
