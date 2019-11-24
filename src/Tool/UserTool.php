@@ -53,13 +53,13 @@ class UserTool
 {
     const SERVICE_NAME = 'userTool';
     use SecurityTrait {
-        hasIdentity as _t_hasIdentity;
-        getIdentity as _t_getIdentity;
-        requireIdentity as _t_requireIdentity;
+        hasIdentity as public;
+        getIdentity as public;
+        requireIdentity as public;
 
-        hasUser as _t_hasUser;
-        getUser as _t_getUser;
-        requireUser as _t_requireUser;
+        hasUser as public;
+        getUser as public;
+        requireUser as public;
     }
 
     /** @var PDO */
@@ -69,6 +69,7 @@ class UserTool
     private $cachedUserAttributes;
     private $attributeName2IDMap = [];
     private $userRoleCache;
+    private $userGroupsCache;
 
     /**
      * SecurityTool constructor.
@@ -80,57 +81,28 @@ class UserTool
     }
 
     /**
-     * @inheritDoc
-     * Forward trait method
+     * Gets the user name
+     *
+     * @return string
      */
-    protected function hasIdentity($minimalReliability = 0): bool
-    {
-        return $this->_t_hasIdentity($minimalReliability);
+    public function getUserName() {
+        if($u = $this->getUser())
+            return $u->getUsername();
+        return "";
     }
 
     /**
-     * @inheritDoc
-     * Forward trait method
+     * Tries to get a readable full user name
+     *
+     * @return string
      */
-    public function getIdentity($minimalReliability = 0, IdentityInterface &$minimalFound = NULL): ?IdentityInterface
-    {
-        return $this->_t_getIdentity($minimalReliability, $minimalFound);
-    }
-
-    /**
-     * @inheritDoc
-     * Forward trait method
-     */
-    public function requireIdentity($minimalReliability = 0): IdentityInterface
-    {
-        return $this->_t_requireIdentity($minimalReliability);
-    }
-
-    /**
-     * @inheritDoc
-     * Forward trait method
-     */
-    public function hasUser(): bool
-    {
-        return $this->_t_hasUser();
-    }
-
-    /**
-     * @inheritDoc
-     * Forward trait method
-     */
-    public function getUser(): ?UserInterface
-    {
-        return $this->_t_getUser();
-    }
-
-    /**
-     * @inheritDoc
-     * Forward trait method
-     */
-    public function requireUser(): UserInterface
-    {
-        return $this->_t_requireUser();
+    public function getFullUserName() {
+        if($u = $this->getUser()) {
+            if(method_exists($u, 'getFullName'))
+                return $u->getFullName();
+            return $this->getUserName();
+        }
+        return "";
     }
 
 
@@ -168,8 +140,24 @@ class UserTool
      */
     public function isMember($group): bool {
         if($user = $this->getUser()) {
-            $g = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME )->getGroups();
-            return isset($g[$group]) || in_array($group, $g);
+            // $g = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME )->getGroups();
+            if(NULL === $this->userGroupsCache) {
+                $uid = $user->getId();
+
+                $this->userGroupsCache= [];
+                foreach($this->PDO->select("SELECT
+id
+FROM SKY_GROUP
+JOIN SKY_USER_GROUP ON groupid = id
+WHERE user = $uid") as $record) {
+                    $this->userGroupsCache[] = $record["id"]*1;
+                }
+            }
+            /** @var UserGroupTool $gt */
+            $gt = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME );
+            if($g = $gt->getGroup($group)) {
+                return in_array($g->getId(), $this->userGroupsCache) ? true : false;
+            }
         }
         return false;
     }
@@ -180,9 +168,10 @@ class UserTool
      */
     public function getUserRoles(): ?array {
         if($user = $this->getUser()) {
-            if(NULL === $this->cachedUserRoles)
+            if(NULL === $this->cachedUserRoles) {
                 $this->cachedUserRoles = array_map(function($r) {if($r instanceof RoleInterface){return$r->getRole();}else{return(string)$r;}}, $user->getRoles());
-            $this->userRoleCache = [];
+                $this->userRoleCache = [];
+            }
             return $this->cachedUserRoles;
         }
         return NULL;
@@ -199,8 +188,10 @@ class UserTool
             if($role instanceof RoleInterface)
                 $role = $role->getRole();
             if(!isset($this->userRoleCache[$role])) {
+                $roles = $this->getUserRoles();
+
                 $this->userRoleCache[$role] = false;
-                foreach($this->getUserRoles() as $r) {
+                foreach($roles as $r) {
                     if(stripos($role, $r) === 0) {
                         $this->userRoleCache[$role] = true;
                         break;
@@ -208,7 +199,7 @@ class UserTool
                 }
             }
 
-            return $this->userRoleCache[$role];
+            return $this->userRoleCache[$role] ? true : false;
         }
         return false;
     }

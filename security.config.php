@@ -41,6 +41,7 @@ use Skyline\CMS\Security\Identity\IdentityInstallerServiceFactory;
 use Skyline\CMS\Security\Identity\IdentityServiceFactory;
 use Skyline\CMS\Security\Tool\PasswordResetTool;
 use Skyline\CMS\Security\Tool\UserGroupTool;
+use Skyline\CMS\Security\Tool\UserRoleTool;
 use Skyline\CMS\Security\Tool\UserTool;
 use Skyline\CMS\Security\UserSystem\PermissionChangedValidator;
 use Skyline\CMS\Security\UserSystem\UserProvider;
@@ -296,5 +297,11 @@ return [
                 'pdo' => '$PDO'
             ]
         ],
+        UserRoleTool::SERVICE_NAME => [
+            AbstractFileConfiguration::SERVICE_CLASS => UserRoleTool::class,
+            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                'pdo' => '$PDO'
+            ]
+        ]
     ]
 ];

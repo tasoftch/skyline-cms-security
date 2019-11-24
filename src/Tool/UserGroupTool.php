@@ -68,7 +68,7 @@ class UserGroupTool extends AbstractSecurityTool
             $this->cachedGroups = [];
             foreach($this->PDO->select("SELECT id, name, description, options FROM SKY_GROUP") as $record) {
                 $this->cachedGroups[ $record["id"] * 1 ] = new Group($record);
-                $this->groupNamesMap[ $record["name"] ] = $record["id"]*1;
+                $this->groupNamesMap[ strtolower($record["name"]) ] = $record["id"]*1;
             }
         }
 
@@ -82,7 +82,7 @@ class UserGroupTool extends AbstractSecurityTool
     public function getGroup($group): ?Group {
         $groups = $this->getGroups();
         if(!is_numeric($group))
-            $group = $this->groupNamesMap[ (string)$group ] ?? -1;
+            $group = $this->groupNamesMap[ strtolower((string)$group) ] ?? -1;
         return $groups[$group] ?? NULL;
     }
 
