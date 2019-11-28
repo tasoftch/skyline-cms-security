@@ -21,7 +21,8 @@
     "ext-openssl": "*",
     "skyline/security": "dev-master",
     "skyline/core-application": "dev-master",
-    "skyline/pdo": "dev-master"
+    "skyline/pdo": "dev-master",
+    "tasoft/value-injector": "dev-master"
   },
   "require-dev": {
     "phpunit/phpunit": "^6",
