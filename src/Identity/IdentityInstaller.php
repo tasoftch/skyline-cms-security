@@ -56,6 +56,8 @@ class IdentityInstaller implements AuthenticationPostValidatorInterface
 
     private $_reachableProviders;
 
+    private $enabled = true;
+
     /**
      * IdentityInstaller constructor.
      * @param array $mappings
@@ -133,6 +135,10 @@ class IdentityInstaller implements AuthenticationPostValidatorInterface
         $response = ServiceManager::generalServiceManager()->get("response");
         if($user) {
             // Only install, if authentication was successful
+
+            if($identity instanceof TemporaryIdentity)
+                return true;
+
             $is = $this->getIdentityService();
             if($is instanceof IdentityService) {
                 if($provider = $is->getProviderForIdentity($identity)) {
@@ -156,8 +162,16 @@ class IdentityInstaller implements AuthenticationPostValidatorInterface
         return true;
     }
 
+    /**
+     * @param bool $enabled
+     */
+    public function setEnabled(bool $enabled): void
+    {
+        $this->enabled = $enabled;
+    }
+
     public function isEnabled(): bool
     {
-        return true;
+        return $this->enabled;
     }
 }
