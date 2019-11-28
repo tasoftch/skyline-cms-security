@@ -35,7 +35,9 @@
 namespace Skyline\CMS\Security\Tool\Attribute;
 
 
-abstract class AbstractAttribute
+use Skyline\PDO\PDOResourceInterface;
+
+abstract class AbstractAttribute implements PDOResourceInterface
 {
     /** @var int */
     private $id;

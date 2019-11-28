@@ -3,7 +3,9 @@
 namespace Skyline\CMS\Security\UserSystem;
 
 
-class Group
+use Skyline\PDO\PDOResourceInterface;
+
+class Group implements PDOResourceInterface
 {
     const OPTION_INTERNAL = 1<<0;
 

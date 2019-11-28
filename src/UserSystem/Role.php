@@ -3,7 +3,9 @@
 namespace Skyline\CMS\Security\UserSystem;
 
 
-class Role extends \Skyline\Security\Role\Role
+use Skyline\PDO\PDOResourceInterface;
+
+class Role extends \Skyline\Security\Role\Role implements PDOResourceInterface
 {
     const OPTION_INTERNAL = 1<<0;
     const OPTION_ASSIGNABLE = 1<<1;

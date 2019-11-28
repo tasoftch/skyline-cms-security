@@ -35,9 +35,10 @@
 namespace Skyline\CMS\Security\UserSystem;
 
 
+use Skyline\PDO\PDOResourceInterface;
 use Skyline\Security\User\AdvancedUser;
 
-class User extends AdvancedUser
+class User extends AdvancedUser implements PDOResourceInterface
 {
     const OPTION_CAN_LOGIN_WITH_MAIL = 1<<3;
     const OPTION_INVALIDATE_SESSION = 1<<4;
