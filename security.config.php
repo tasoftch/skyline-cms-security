@@ -39,6 +39,7 @@ use Skyline\CMS\Security\Challenge\TemplateChallenge;
 use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\CMS\Security\Identity\IdentityInstallerServiceFactory;
 use Skyline\CMS\Security\Identity\IdentityServiceFactory;
+use Skyline\CMS\Security\Tool\AttributeTool;
 use Skyline\CMS\Security\Tool\PasswordResetTool;
 use Skyline\CMS\Security\Tool\UserGroupTool;
 use Skyline\CMS\Security\Tool\UserRoleTool;
@@ -299,6 +300,12 @@ return [
         ],
         UserRoleTool::SERVICE_NAME => [
             AbstractFileConfiguration::SERVICE_CLASS => UserRoleTool::class,
+            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                'pdo' => '$PDO'
+            ]
+        ],
+        AttributeTool::SERVICE_NAME => [
+            AbstractFileConfiguration::SERVICE_CLASS => AttributeTool::class,
             AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
                 'pdo' => '$PDO'
             ]
