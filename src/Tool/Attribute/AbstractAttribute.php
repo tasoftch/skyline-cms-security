@@ -83,6 +83,8 @@ abstract class AbstractAttribute implements AttributeInterface
                 $class = TimeAttribute::class; break;
             case 'datetime':
                 $class = DateTimeAttribute::class; break;
+            case 'int':
+                $class = NumberAttribute::class; break;
             default:
                 if(class_exists($record["valueType"]))
                     $class = ObjectAttribute::class;
