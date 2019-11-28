@@ -47,6 +47,13 @@ interface AttributeInterface extends PDOResourceInterface
     public function getName();
 
     /**
+     * Returns true, if the attribute allows multiple values
+     *
+     * @return bool
+     */
+    public function allowsMultiple(): bool;
+
+    /**
      * Converts a scalar value from data base into the real attribute value
      *
      * @param $value
