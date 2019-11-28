@@ -39,7 +39,7 @@ use TASoft\Util\ValueObject\Date;
 
 class DateAttribute extends AbstractAttribute
 {
-    protected function convertValueFromDB($value)
+    public function convertValueFromDB($value)
     {
         if($value)
             return new Date($value);
@@ -50,7 +50,7 @@ class DateAttribute extends AbstractAttribute
      * @param Date $value
      * @return mixed
      */
-    protected function convertValueToDB($value)
+    public function convertValueToDB($value)
     {
         if($value instanceof Date)
             return $value->format("Y-m-d");

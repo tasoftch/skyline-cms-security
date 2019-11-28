@@ -39,7 +39,7 @@ use TASoft\Util\ValueObject\Time;
 
 class TimeAttribute extends AbstractAttribute
 {
-    protected function convertValueFromDB($value)
+    public function convertValueFromDB($value)
     {
         if($value)
             return new Time($value);
@@ -50,7 +50,7 @@ class TimeAttribute extends AbstractAttribute
      * @param Time $value
      * @return mixed
      */
-    protected function convertValueToDB($value)
+    public function convertValueToDB($value)
     {
         if($value instanceof Time)
             return $value->format("G:i:s");

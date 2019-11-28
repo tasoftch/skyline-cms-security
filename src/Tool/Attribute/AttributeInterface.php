@@ -35,25 +35,30 @@
 namespace Skyline\CMS\Security\Tool\Attribute;
 
 
-use TASoft\Util\ValueObject\DateTime;
+use Skyline\PDO\PDOResourceInterface;
 
-class DateTimeAttribute extends AbstractAttribute
+interface AttributeInterface extends PDOResourceInterface
 {
-    public function convertValueFromDB($value)
-    {
-        if($value)
-            return new DateTime($value);
-        return NULL;
-    }
+    /**
+     * Gets the attribute name
+     *
+     * @return string
+     */
+    public function getName();
 
     /**
-     * @param DateTime $value
+     * Converts a scalar value from data base into the real attribute value
+     *
+     * @param $value
      * @return mixed
      */
-    public function convertValueToDB($value)
-    {
-        if($value instanceof DateTime)
-            return $value->format("Y-m-d G:i:s");
-        return NULL;
-    }
+    public function convertValueFromDB($value);
+
+    /**
+     * Converts the real attribute value into a scalar representation to store in database.
+     *
+     * @param $value
+     * @return mixed
+     */
+    public function convertValueToDB($value);
 }

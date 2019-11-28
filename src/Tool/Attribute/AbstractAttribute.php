@@ -35,28 +35,20 @@
 namespace Skyline\CMS\Security\Tool\Attribute;
 
 
-use Skyline\PDO\PDOResourceInterface;
-
-abstract class AbstractAttribute implements PDOResourceInterface
+abstract class AbstractAttribute implements AttributeInterface
 {
     /** @var int */
     private $id;
     /** @var string */
     private $name;
-    /** @var mixed */
-    private $value;
     /** @var string|null */
     private $description;
     /** @var string|null */
     private $icon;
-    /** @var int */
-    private $options;
 
     public function __construct($record)
     {
         $this->id = $record["id"] * 1;
-        $this->options = $record["options"] * 1;
-        $this->value = $this->convertValueFromDB( $record["value"] );
         $this->description = $record["description"];
         $this->icon = $record["icon"];
         $this->name = $record["name"];
@@ -96,30 +88,6 @@ abstract class AbstractAttribute implements PDOResourceInterface
     }
 
     /**
-     * Called to store the attribute in data base
-     * @return mixed
-     */
-    public function getDataBaseValue() {
-        return $this->convertValueToDB($this->getValue());
-    }
-
-    /**
-     * Called on creation from data base
-     *
-     * @param mixed $value
-     * @return mixed
-     */
-    abstract protected function convertValueFromDB($value);
-
-    /**
-     * Called to convert the value to the data base
-     *
-     * @param $value
-     * @return mixed
-     */
-    abstract protected function convertValueToDB($value);
-
-    /**
      * @return int
      */
     public function getId(): int
@@ -136,14 +104,6 @@ abstract class AbstractAttribute implements PDOResourceInterface
     }
 
     /**
-     * @return mixed
-     */
-    public function getValue()
-    {
-        return $this->value;
-    }
-
-    /**
      * @return string|null
      */
     public function getDescription(): ?string
@@ -157,13 +117,5 @@ abstract class AbstractAttribute implements PDOResourceInterface
     public function getIcon(): ?string
     {
         return $this->icon;
-    }
-
-    /**
-     * @return int
-     */
-    public function getOptions(): int
-    {
-        return $this->options;
     }
 }
