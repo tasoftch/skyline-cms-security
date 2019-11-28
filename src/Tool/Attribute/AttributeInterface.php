@@ -47,6 +47,13 @@ interface AttributeInterface extends PDOResourceInterface
     public function getName();
 
     /**
+     * Returns if the attribute is enabled or not
+     *
+     * @return bool
+     */
+    public function isEnabled(): bool;
+
+    /**
      * Returns true, if the attribute allows multiple values
      *
      * @return bool
