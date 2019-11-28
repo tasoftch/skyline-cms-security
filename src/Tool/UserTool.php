@@ -34,12 +34,11 @@
 
 namespace Skyline\CMS\Security\Tool;
 
+use DateTime;
 use Skyline\CMS\Security\Exception\InvalidIdentityTokenException;
 use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\CMS\Security\Identity\TemporaryIdentity;
 use Skyline\CMS\Security\SecurityTrait;
-use Skyline\CMS\Security\Tool\Attribute\AbstractAttribute;
-use Skyline\CMS\Security\UserSystem\User;
 use Skyline\PDO\PDOResourceInterface;
 use Skyline\Security\Identity\IdentityInterface;
 use Skyline\Security\Identity\IdentityService;
@@ -75,8 +74,6 @@ class UserTool
     private $PDO;
 
     private $cachedUserRoles;
-    private $cachedUserAttributes;
-    private $attributeName2IDMap = [];
     private $userRoleCache;
     private $userGroupsCache;
 
@@ -121,6 +118,19 @@ class UserTool
             return $this->getUserName();
         }
         return "";
+    }
+
+    /**
+     * @return int
+     */
+    public function getUserID(): int {
+        if($user = $this->getUser()) {
+            if($user instanceof PDOResourceInterface)
+                return $user->getID();
+            else
+                return $this->PDO->selectFieldValue("SELECT id FROM SKY_USER WHERE username = ? LIMIT 1", 'id', [$user->getUsername()]) * 1;
+        }
+        return -1;
     }
 
 
@@ -176,10 +186,9 @@ class UserTool
      * @return bool
      */
     public function isMember($group): bool {
-        if($user = $this->getUser()) {
+        if($uid = $this->getUserID()) {
             // $g = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME )->getGroups();
             if(NULL === $this->userGroupsCache) {
-                $uid = $user->getId();
 
                 $this->userGroupsCache= [];
                 foreach($this->PDO->select("SELECT
@@ -279,91 +288,6 @@ WHERE user = $uid") as $record) {
     }
 
     /**
-     * Gets user attributes
-     *
-     * @param User|NULL $user
-     * @return array|null
-     */
-    public function getAttributes(User $user = NULL): ?array {
-        if(!$user)
-            $user = $this->getUser();
-
-        if($user) {
-            $uid = $user->getId();
-
-            if(!isset($this->cachedUserAttributes[$uid])) {
-                $this->cachedUserAttributes[$uid] = [];
-
-                foreach($this->PDO->select("SELECT
-id,
-       options,
-       value,
-       valueType,
-       name,
-       description,
-       icon
-FROM SKY_USER_ATTRIBUTE_Q
-JOIN SKY_USER_ATTRIBUTE on attribute = id
-WHERE user = $uid AND enabled = 1
-ORDER BY name") as $record) {
-                    $attr = AbstractAttribute::create($record);
-                    if($attr) {
-                        $this->cachedUserAttributes[$uid][ $record["id"]*1 ] = $attr;
-                        $this->attributeName2IDMap[ strtolower($record["name"]) ] = $record["id"]*1;
-                    }
-
-                    else
-                        trigger_error("Can not create user attribute {$record["name"]}", E_USER_NOTICE);
-                }
-            }
-
-            return $this->cachedUserAttributes[$uid];
-        }
-        return NULL;
-    }
-
-    /**
-     * Gets the required attribute of logged user if available
-     *
-     * @param string|int $attribute  attribute name or id
-     * @return AbstractAttribute|null
-     */
-    public function getAttribute($attribute): ?AbstractAttribute {
-        $attrs = $this->getAttributes();
-        if(!is_numeric($attribute))
-            $attribute = $this->attributeName2IDMap[ strtolower( (string) $attribute) ] ?? -1;
-        return $attrs[ $attribute ] ?? NULL;
-    }
-
-    /**
-     * Creates an empty instance for a user attribute
-     *
-     * @param $attributeIDorName
-     * @return AbstractAttribute|null
-     */
-    public function makeAttribute($attributeIDorName): ?AbstractAttribute {
-        $attr = $this->PDO->selectOne("SELECT id,
-       0 as options,
-       NULL as value,
-       valueType,
-       name,
-       description,
-       icon FROM SKY_USER_ATTRIBUTE WHERE id = ? OR name = ?", [$attributeIDorName, $attributeIDorName]);
-        return AbstractAttribute::create($attr);
-    }
-
-    public function updateAttribute(AbstractAttribute $attribute, $value = NULL, int $options = NULL, bool $replace = true): bool {
-        if($user = $this->getUser()) {
-            $aid = $attribute->getId();
-            if($user instanceof PDOResourceInterface) {
-
-            } else {
-
-            }
-        }
-    }
-
-    /**
      * Please use the identity tokens very careful!
      * They can be used like OAuth, so an identity's token and credentials are stored inside the token.
      * You may pass this token in API calls for example to increase reliability temporary.
@@ -371,17 +295,18 @@ ORDER BY name") as $record) {
      *
      * PLEASE NOTE: YOU USE THIS MECHANISM ON YOUR OWN RISK !!
      *
-     * @param IdentityInterface $identity  The identity to take its token and credentials
-     * @param string $secure                A secure passphrase to encrypt the identity information
-     * @param int $ttl                      Time to live in secondy, how long the token is valid
+     * @param IdentityInterface $identity The identity to take its token and credentials
+     * @param string $secure A secure passphrase to encrypt the identity information
+     * @param int $ttl Time to live in secondy, how long the token is valid
      * @return string
+     * @throws \Exception
      * @see UserTool::decodeTemporaryIdentityToken()
      */
     public function makeTemporaryIdentityToken(IdentityInterface $identity, string $secure, int $ttl = 60): string {
         $key = hash( 'sha256', 'skyline-user-tool-temporary-identity-token-service' );
         $iv = substr( hash( 'sha256', $secure  ), 0, 16 );
 
-        $date = new \DateTime("now +{$ttl}seconds");
+        $date = new DateTime("now +{$ttl}seconds");
 
         return base64_encode( openssl_encrypt( serialize([
             'idty',
@@ -396,10 +321,11 @@ ORDER BY name") as $record) {
     /**
      * Decodes a token back to a temporary identity.
      *
-     * @param string $token     The token
-     * @param string $secure    The passphrase to decode the token
-     * @param bool $use         If true, will use it as yielded identity
+     * @param string $token The token
+     * @param string $secure The passphrase to decode the token
+     * @param bool $use If true, will use it as yielded identity
      * @return TemporaryIdentity
+     * @throws \Exception
      * @see UserTool::makeTemporaryIdentityToken()
      */
     public function decodeTemporaryIdentityToken(string $token, string $secure, bool $use = false): TemporaryIdentity {
@@ -412,8 +338,8 @@ ORDER BY name") as $record) {
             list($hdr, $reliability, $token, $credentials, $options, $date) = unserialize($data)
         );
         if($hdr == 'idty' && !error_get_last()) {
-            $date = new \DateTime($date);
-            if($date->getTimestamp() >= (new \DateTime("now"))->getTimestamp()) {
+            $date = new DateTime($date);
+            if($date->getTimestamp() >= (new DateTime("now"))->getTimestamp()) {
                 $idty = new TemporaryIdentity($token, $credentials, $reliability);
                 $idty->setOptions( $options );
 
