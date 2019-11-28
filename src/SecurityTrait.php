@@ -189,6 +189,24 @@ trait SecurityTrait
         return false;
     }
 
+    /**
+     * Pushes the identity to internal storage
+     *
+     * @param IdentityInterface $identity
+     */
+    protected function pushIdentity(?IdentityInterface $identity) {
+        self::$identity = $identity;
+    }
+
+    /**
+     * Pushes the user to internal storage
+     *
+     * @param UserInterface|null $user
+     */
+    protected function pushUser(?UserInterface $user) {
+        self::$user = $user;
+    }
+
 
     /**
      * Tries to get an authenticated user
