@@ -45,6 +45,10 @@ abstract class AbstractAttribute implements AttributeInterface
     private $description;
     /** @var string|null */
     private $icon;
+    /** @var bool */
+    private $enabled = true;
+    /** @var bool */
+    private $allowsMultiple = false;
 
     public function __construct($record)
     {
@@ -52,6 +56,8 @@ abstract class AbstractAttribute implements AttributeInterface
         $this->description = $record["description"];
         $this->icon = $record["icon"];
         $this->name = $record["name"];
+        $this->enabled = $record["enabled"] ? true : false;
+        $this->allowsMultiple = $record["multiple"] ? true : false;
     }
 
     /**
@@ -117,5 +123,21 @@ abstract class AbstractAttribute implements AttributeInterface
     public function getIcon(): ?string
     {
         return $this->icon;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isEnabled(): bool
+    {
+        return $this->enabled;
+    }
+
+    /**
+     * @return bool
+     */
+    public function allowsMultiple(): bool
+    {
+        return $this->allowsMultiple;
     }
 }
