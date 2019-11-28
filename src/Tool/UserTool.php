@@ -34,13 +34,17 @@
 
 namespace Skyline\CMS\Security\Tool;
 
+use Skyline\CMS\Security\Exception\InvalidIdentityTokenException;
 use Skyline\CMS\Security\Identity\IdentityInstaller;
+use Skyline\CMS\Security\Identity\TemporaryIdentity;
 use Skyline\CMS\Security\SecurityTrait;
 use Skyline\CMS\Security\Tool\Attribute\AbstractAttribute;
 use Skyline\CMS\Security\UserSystem\User;
+use Skyline\PDO\PDOResourceInterface;
 use Skyline\Security\Identity\IdentityInterface;
+use Skyline\Security\Identity\IdentityService;
+use Skyline\Security\Identity\SessionIdentity;
 use Skyline\Security\Role\RoleInterface;
-use Skyline\Security\User\UserInterface;
 use Symfony\Component\HttpFoundation\Response;
 use TASoft\Service\ServiceManager;
 use TASoft\Util\PDO;
@@ -60,6 +64,11 @@ class UserTool
         hasUser as public;
         getUser as public;
         requireUser as public;
+
+        getIdentityService as public;
+        getAuthenticationService as public;
+        getAuthorizationService as public;
+        getChallengeManager as public;
     }
 
     /** @var PDO */
@@ -79,6 +88,15 @@ class UserTool
     {
         $this->PDO = $PDO;
     }
+
+    /**
+     * @return PDO
+     */
+    public function getPDO(): PDO
+    {
+        return $this->PDO;
+    }
+
 
     /**
      * Gets the user name
@@ -117,19 +135,38 @@ class UserTool
         if(!$identity)
             $identity = $this->getIdentity();
 
-        /** @var IdentityInstaller $installer */
-        $installer = ServiceManager::generalServiceManager()->get( IdentityInstaller::SERVICE_NAME );
+        if($identity) {
+            /** @var IdentityInstaller $installer */
+            $installer = ServiceManager::generalServiceManager()->get( IdentityInstaller::SERVICE_NAME );
 
 
-        /** @var Response $response */
-        $response = ServiceManager::generalServiceManager()->get("response");
+            /** @var Response $response */
+            $response = ServiceManager::generalServiceManager()->get("response");
 
-        $done = true;
-        foreach($installer->getReachableProviders() as $provider) {
-            if(!$provider->uninstallIdentity($identity, $response))
-                $done = false;
+            $done = true;
+            foreach($installer->getReachableProviders() as $provider) {
+                if(!$provider->uninstallIdentity($identity, $response))
+                    $done = false;
+            }
+            return $done;
         }
-        return $done;
+        return false;
+    }
+
+    /**
+     * Checks, if a remember me identity exists.
+     *
+     * @return bool
+     */
+    public function hasRememberMeIdentity(): bool {
+        /** @var IdentityService $is */
+        $is = $this->getIdentityService();
+
+        foreach($is->yieldIdentities($this->getRequest()) as $identity) {
+            if($identity instanceof SessionIdentity && $identity->isRememberMe())
+                return true;
+        }
+        return false;
     }
 
     /**
@@ -296,5 +333,100 @@ ORDER BY name") as $record) {
         if(!is_numeric($attribute))
             $attribute = $this->attributeName2IDMap[ strtolower( (string) $attribute) ] ?? -1;
         return $attrs[ $attribute ] ?? NULL;
+    }
+
+    /**
+     * Creates an empty instance for a user attribute
+     *
+     * @param $attributeIDorName
+     * @return AbstractAttribute|null
+     */
+    public function makeAttribute($attributeIDorName): ?AbstractAttribute {
+        $attr = $this->PDO->selectOne("SELECT id,
+       0 as options,
+       NULL as value,
+       valueType,
+       name,
+       description,
+       icon FROM SKY_USER_ATTRIBUTE WHERE id = ? OR name = ?", [$attributeIDorName, $attributeIDorName]);
+        return AbstractAttribute::create($attr);
+    }
+
+    public function updateAttribute(AbstractAttribute $attribute, $value = NULL, int $options = NULL, bool $replace = true): bool {
+        if($user = $this->getUser()) {
+            $aid = $attribute->getId();
+            if($user instanceof PDOResourceInterface) {
+
+            } else {
+
+            }
+        }
+    }
+
+    /**
+     * Please use the identity tokens very careful!
+     * They can be used like OAuth, so an identity's token and credentials are stored inside the token.
+     * You may pass this token in API calls for example to increase reliability temporary.
+     * This mechanism is designed to temporary increase the reliability for a single API call.
+     *
+     * PLEASE NOTE: YOU USE THIS MECHANISM ON YOUR OWN RISK !!
+     *
+     * @param IdentityInterface $identity  The identity to take its token and credentials
+     * @param string $secure                A secure passphrase to encrypt the identity information
+     * @param int $ttl                      Time to live in secondy, how long the token is valid
+     * @return string
+     * @see UserTool::decodeTemporaryIdentityToken()
+     */
+    public function makeTemporaryIdentityToken(IdentityInterface $identity, string $secure, int $ttl = 60): string {
+        $key = hash( 'sha256', 'skyline-user-tool-temporary-identity-token-service' );
+        $iv = substr( hash( 'sha256', $secure  ), 0, 16 );
+
+        $date = new \DateTime("now +{$ttl}seconds");
+
+        return base64_encode( openssl_encrypt( serialize([
+            'idty',
+            $identity->getReliability(),
+            $identity->getToken(),
+            $identity->getCredentials(),
+            $identity->getOptions(),
+            $date->format("Y-m-d G:i:s")
+        ]), "AES-256-CBC", $key, 0, $iv ) );
+    }
+
+    /**
+     * Decodes a token back to a temporary identity.
+     *
+     * @param string $token     The token
+     * @param string $secure    The passphrase to decode the token
+     * @param bool $use         If true, will use it as yielded identity
+     * @return TemporaryIdentity
+     * @see UserTool::makeTemporaryIdentityToken()
+     */
+    public function decodeTemporaryIdentityToken(string $token, string $secure, bool $use = false): TemporaryIdentity {
+        $key = hash( 'sha256', 'skyline-user-tool-temporary-identity-token-service' );
+        $iv = substr( hash( 'sha256', $secure  ), 0, 16 );
+
+        $data = openssl_decrypt( base64_decode($token), "AES-256-CBC", $key, 0, $iv  );
+        error_clear_last();
+        @(
+            list($hdr, $reliability, $token, $credentials, $options, $date) = unserialize($data)
+        );
+        if($hdr == 'idty' && !error_get_last()) {
+            $date = new \DateTime($date);
+            if($date->getTimestamp() >= (new \DateTime("now"))->getTimestamp()) {
+                $idty = new TemporaryIdentity($token, $credentials, $reliability);
+                $idty->setOptions( $options );
+
+                if($use)
+                    $this->pushIdentity( $idty );
+
+                return $idty;
+            } else {
+                throw new InvalidIdentityTokenException("Invalid token. Time is up, not yet valid", 19031);
+            }
+        } else
+            error_clear_last();
+
+        throw new InvalidIdentityTokenException("Invalid token. Could not decode", 19029);
     }
 }
