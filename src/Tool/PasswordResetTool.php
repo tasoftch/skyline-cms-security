@@ -38,6 +38,8 @@ use Skyline\CMS\Security\SecurityTrait;
 use Skyline\CMS\Security\Tool\Token\PasswordResetToken;
 use Skyline\CMS\Security\Tool\Token\TokenInterface;
 use Skyline\Security\Authentication\AuthenticationService;
+use Skyline\Security\Identity\IdentityInterface;
+use Skyline\Security\Identity\IdentityService;
 use Skyline\Security\User\AdvancedUserInterface;
 use Skyline\Security\User\Provider\MutableUserProviderInterface;
 use Skyline\Security\User\Provider\UserProviderInterface;
@@ -173,22 +175,52 @@ class PasswordResetTool extends AbstractSecurityTool
      */
     public function updatePassword($token, string $newPlainPassword, &$errorCode = -1) {
         if($this->validatePasswordResetToken($token, $user, $errorCode)) {
-            /** @var AuthenticationService $service */
-            $service = $this->getAuthenticationService();
-            if(method_exists($service, 'getPasswordEncoder')) {
-                $options = [];
-                $password = $service->getPasswordEncoder()->encodePassword($newPlainPassword, $options);
-                if($password) {
-                    $userProvider = $service->getUserProvider();
-                    if($userProvider instanceof MutableUserProviderInterface) {
-                        return $userProvider->setCredentials($password, $user, $options) ? true : false;
-                    } else
-                        $errorCode = static::ERROR_CODE_IMMUTABLE_PROVIDER;
-                } else
-                    $errorCode = static::ERROR_CODE_INVALID_ENCODED_PASSWORD;
-            } else
-                $errorCode = static::ERROR_CODE_NO_PASSWORD_ENCODER_AVAILABLE;
+            return $this->updateUserPassword($user, $newPlainPassword, $errorCode);
         }
         return false;
+    }
+
+    /**
+     * Updates a user password
+     *
+     * @param UserInterface $user
+     * @param string $newPlainPassword
+     * @param int $errorCode
+     * @return bool
+     */
+    public function updateUserPassword(UserInterface $user, string $newPlainPassword, &$errorCode = -1) {
+        /** @var AuthenticationService $service */
+        $service = $this->getAuthenticationService();
+        if(method_exists($service, 'getPasswordEncoder')) {
+            $options = [];
+            $password = $service->getPasswordEncoder()->encodePassword($newPlainPassword, $options);
+            if($password) {
+                $userProvider = $service->getUserProvider();
+                if($userProvider instanceof MutableUserProviderInterface) {
+                    return $userProvider->setCredentials($password, $user, $options) ? true : false;
+                } else
+                    $errorCode = static::ERROR_CODE_IMMUTABLE_PROVIDER;
+            } else
+                $errorCode = static::ERROR_CODE_INVALID_ENCODED_PASSWORD;
+        } else
+            $errorCode = static::ERROR_CODE_NO_PASSWORD_ENCODER_AVAILABLE;
+        return false;
+    }
+
+    /**
+     * Dismiss all installed identities and users and reinstall from given identity or available identities.
+     *
+     * @param IdentityInterface|NULL $identity
+     * @return bool
+     */
+    public function reinstallNewIdentity(IdentityInterface $identity = NULL) {
+        /** @var IdentityService $is */
+        $is = $this->getIdentityService();
+        $is->resetIdentityCache();
+
+        $this->pushIdentity($identity);
+        $this->pushUser(NULL);
+
+        return $this->getUser() ? true : false;
     }
 }
