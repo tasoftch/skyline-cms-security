@@ -42,7 +42,7 @@ class ValueContainer
     /** @var mixed */
     private $value;
     /** @var int */
-    private $options;
+    private $options = 0;
     /** @var AttributeInterface */
     private $attribute;
 
