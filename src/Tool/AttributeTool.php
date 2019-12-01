@@ -37,8 +37,10 @@ namespace Skyline\CMS\Security\Tool;
 
 use Skyline\CMS\Security\Tool\Attribute\AbstractAttribute;
 use Skyline\CMS\Security\Tool\Attribute\AttributeInterface;
+use Skyline\CMS\Security\Tool\Attribute\Value\FileValueContainer;
 use Skyline\CMS\Security\Tool\Attribute\Value\ValueContainer;
 use Skyline\PDO\PDOResourceInterface;
+use TASoft\Service\ServiceManager;
 use TASoft\Util\PDO;
 use TASoft\Util\ValueInjector;
 
@@ -74,13 +76,18 @@ class AttributeTool extends AbstractSecurityTool
     private $cachedAttributeGroups;
     private $cachedAttributeGroupNames2ID;
 
+    private $boundFilesMap = [
+        self::ATTR_LOGO_ID => "$(/)/Components/img/Benutzer-Bilder"
+    ];
+
     /**
      * SecurityTool constructor.
      * @param $PDO
      */
-    public function __construct($PDO)
+    public function __construct($PDO, $boundFilesMap = [])
     {
         $this->PDO = $PDO;
+        $this->boundFilesMap = $boundFilesMap;
     }
 
     /**
@@ -112,7 +119,7 @@ class AttributeTool extends AbstractSecurityTool
        SKY_USER_ATTRIBUTE_GROUP.id as gid
 FROM SKY_USER_ATTRIBUTE
 LEFT JOIN SKY_USER_ATTRIBUTE_GROUP on attr_group = SKY_USER_ATTRIBUTE_GROUP.id
-ORDER BY name") as $record) {
+ORDER BY sortierung, name") as $record) {
                 $attr = AbstractAttribute::create($record);
                 if ($attr) {
                     $this->cachedAttributes[$record["id"] * 1] = $attr;
@@ -208,7 +215,7 @@ ORDER BY name") as $record) {
     public function getAttribute($attribute): ?AttributeInterface {
         $this->getAttributes();
         if(!is_numeric($attribute))
-            $attribute = $this->cachedAttributeGroupNames2ID[ strtolower($attribute) ] ?? -1;
+            $attribute = $this->attributeName2ID[ strtolower($attribute) ] ?? -1;
         return $this->cachedAttributes[$attribute] ?? NULL;
     }
 
@@ -218,37 +225,98 @@ ORDER BY name") as $record) {
      *
      * @param $attribute
      * @param $user
-     * @return null|ValueContainer
+     * @param bool $rawValue        If set, returns the raw value without value container
+     * @return null|ValueContainer|array|mixed
      */
-    public function getAttributeValue($attribute, $user): ValueContainer {
+    public function getAttributeValue($attribute, $user, bool $rawValue = false) {
         if($attr = $this->getAttribute($attribute)) {
             if($user instanceof PDOResourceInterface)
                 $user = $user->getID();
 
             if(is_numeric($user)) {
                 $aid = $attr->getID();
-                $value = new ValueContainer();
-                $vi = new ValueInjector($value);
-                $vi->attribute = $attr;
+
+                $theOptions = 0;
+                $theValue = NULL;
 
                 foreach($this->PDO->select("SELECT options, value FROM SKY_USER_ATTRIBUTE_Q WHERE user = $user AND attribute = $aid") as $record) {
-                    $vi->options = $vi->options | $record["options"];
+                    $theOptions |= $record["options"];
 
                     $v = $record["value"];
                     $v = $attr->convertValueFromDB($v);
                     if($attr->allowsMultiple()) {
-                        $list = $vi->value ?? [];
-                        $list[] = $v;
-                        $vi->value = $list;
+                        $theValue[] = $v;
                     } else {
-                        $vi->value = $v;
+                        $theValue = $v;
                         break;
                     }
                 }
 
+                if($rawValue) {
+                    return $theValue;
+                }
+
+                if($map = $this->boundFilesMap[ $aid ] ?? false) {
+                    $map = realpath(ServiceManager::generalServiceManager()->mapValue($map));
+                    if ($map && file_exists($file = "$map/$theValue")) {
+                        $value = new FileValueContainer();
+                        $value->setFilename($file);
+                    }
+                }
+
+                if(!isset($value))
+                    $value = new ValueContainer();
+
+                $vi = new ValueInjector($value, ValueContainer::class);
+                $vi->attribute = $attr;
+                $vi->value = $theValue;
+                $vi->options = $theOptions;
+
                 return $value;
             } else
                 trigger_error("Can not get user id", E_USER_WARNING);
+        }
+        return NULL;
+    }
+
+    /**
+     * @param $attribute
+     * @return ValueContainer|null
+     */
+    public function makeAttributeValue($attribute): ?ValueContainer {
+        if($attr = $this->getAttribute($attribute)) {
+            $value = new ValueContainer();
+            $vi = new ValueInjector($value, ValueContainer::class);
+            $vi->attribute = $attr;
+            return $value;
+        }
+        return NULL;
+    }
+
+    /**
+     * @param $attribute
+     * @param $filename
+     * @param string $copyFunc
+     * @return FileValueContainer|null
+     */
+    public function makeFileAttributeValue($attribute, $filename, $newName = '', $copyFunc = ''): ?FileValueContainer {
+        if($attr = $this->getAttribute($attribute)) {
+            if($map = $this->boundFilesMap[$attr->getID()]) {
+                $map = realpath(ServiceManager::generalServiceManager()->mapValue( $map ));
+                if($map && is_file($filename)) {
+                    $newName = $newName ?: basename($filename);
+                    $dst = "$map/$newName";
+                    if(is_file($dst) || ($copyFunc && $copyFunc($filename, $dst))) {
+                        $value = new FileValueContainer();
+                        $value->setFilename( $dst );
+                        $vi = new ValueInjector($value, ValueContainer::class);
+                        $vi->value = $newName;
+                        $vi->attribute = $attr;
+                        unset($vi);
+                        return $value;
+                    }
+                }
+            }
         }
         return NULL;
     }
@@ -299,6 +367,19 @@ ORDER BY name") as $record) {
                 $user = $user->getID();
 
             if(is_numeric($user)) {
+                if($map = $this->boundFilesMap[ $aid ] ?? false) {
+                    $map = realpath(ServiceManager::generalServiceManager()->mapValue( $map ));
+                    if($map) {
+                        foreach($this->PDO->select("SELECT value FROM SKY_USER_ATTRIBUTE_Q WHERE user = $user AND attribute = $aid") as $record) {
+                            $value = $record["value"];
+
+                            if(file_exists($file = "$map/$value")) {
+                                unlink($file);
+                            }
+                        }
+                    }
+                }
+
                 $this->PDO->exec("DELETE FROM SKY_USER_ATTRIBUTE_Q WHERE user = $user AND attribute = $aid");
                 return true;
             }
