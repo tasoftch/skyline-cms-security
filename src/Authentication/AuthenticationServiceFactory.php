@@ -35,6 +35,7 @@
 namespace Skyline\CMS\Security\Authentication;
 
 
+use InvalidArgumentException;
 use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\Security\Authentication\AuthenticationService;
 use Skyline\Security\Encoder\PasswordEncoderChain;
@@ -62,6 +63,7 @@ class AuthenticationServiceFactory extends AbstractContainer
     const VALIDATOR_SERVER_BRUTE_FORCE = 'server-bf';
     const VALIDATOR_PERMISSION_CHANGED = 'perm-ch';
     const VALIDATOR_AUTO_LOGOUT = 'auto-lgo';
+    const VALIDATOR_UPDATE_LAST_LOGIN_DATE = 'upd-last-login';
 
     const VALIDATOR_INSTALLER_NAME = 'installerName';
 
@@ -87,7 +89,7 @@ class AuthenticationServiceFactory extends AbstractContainer
     {
         $userProviders = $this->getConfiguration()[ static::USER_PROVIDERS ] ?? NULL;
         if(!$userProviders)
-            throw new \InvalidArgumentException("Authentication service requires at least one user provider", 403);
+            throw new InvalidArgumentException("Authentication service requires at least one user provider", 403);
 
         $sm = ServiceManager::generalServiceManager();
         $makeInstance = function($config) use ($sm) {
@@ -116,7 +118,7 @@ class AuthenticationServiceFactory extends AbstractContainer
         $enabledPasswordEncoders = $this->getConfiguration()[ static::ENABLED_PASSWORD_ENCODERS ] ?? NULL;
 
         if(!$enabledPasswordEncoders)
-            throw new \InvalidArgumentException("Authentication service requires at least one enabled password encoder", 403);
+            throw new InvalidArgumentException("Authentication service requires at least one enabled password encoder", 403);
 
 
         if(count($enabledPasswordEncoders) > 1) {
@@ -149,7 +151,7 @@ class AuthenticationServiceFactory extends AbstractContainer
             foreach($validatorNames as $name) {
                 $info = $this->getConfiguration()[ static::VALIDATORS ] [$name] ?? NULL;
                 if(!$info)
-                    throw new \InvalidArgumentException("Can not instantiate validator $name. No definition specified", 403);
+                    throw new InvalidArgumentException("Can not instantiate validator $name. No definition specified", 403);
                 $cnt = new ConfiguredServiceContainer($name, $info, $sm);
                 $validators[] = $cnt->getInstance();
             }

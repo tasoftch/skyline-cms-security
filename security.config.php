@@ -45,6 +45,7 @@ use Skyline\CMS\Security\Tool\UserGroupTool;
 use Skyline\CMS\Security\Tool\UserRoleTool;
 use Skyline\CMS\Security\Tool\UserTool;
 use Skyline\CMS\Security\UserSystem\PermissionChangedValidator;
+use Skyline\CMS\Security\UserSystem\UpdateLastLoginValidator;
 use Skyline\CMS\Security\UserSystem\UserProvider;
 use Skyline\Kernel\Config\MainKernelConfig;
 use Skyline\Security\Authentication\AuthenticationService;
@@ -234,6 +235,13 @@ return [
                     ],
                     AuthenticationServiceFactory::VALIDATOR_PERMISSION_CHANGED => [
                         AbstractFileConfiguration::SERVICE_CLASS => PermissionChangedValidator::class
+                    ],
+                    AuthenticationServiceFactory::VALIDATOR_UPDATE_LAST_LOGIN_DATE => [
+                        AbstractFileConfiguration::SERVICE_CLASS => UpdateLastLoginValidator::class,
+                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                            'db_column_name' => 'lastLoginDate',
+                            'min_reliability' => IdentityInterface::RELIABILITY_HTML_FORM
+                        ]
                     ]
                 ],
                 AuthenticationServiceFactory::ENABLED_VALIDATORS => '%security.validators.enabled%',
@@ -307,7 +315,9 @@ return [
         AttributeTool::SERVICE_NAME => [
             AbstractFileConfiguration::SERVICE_CLASS => AttributeTool::class,
             AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'pdo' => '$PDO'
+                'pdo' => '$PDO',
+                'boundFileMap' => [
+                ]
             ]
         ]
     ]
