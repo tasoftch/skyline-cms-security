@@ -35,27 +35,25 @@
 namespace Skyline\CMS\Security\Tool\Event;
 
 
-use Skyline\CMS\Security\UserSystem\Role;
 use TASoft\EventManager\Event\Event;
 
-class NewRoleEvent extends Event
+class GroupEvent extends Event
 {
-    /** @var Role */
-    private $role;
+    private $group;
 
     /**
-     * @return Role
+     * @return mixed
      */
-    public function getRole(): Role
+    public function getGroup()
     {
-        return $this->role;
+        return $this->group;
     }
 
     /**
-     * @param Role $role
+     * @param mixed $group
      */
-    public function setRole(Role $role): void
+    public function setGroup($group): void
     {
-        $this->role = $role;
+        $this->group = $group;
     }
 }

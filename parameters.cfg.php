@@ -146,6 +146,7 @@ return [
 
     // Tools
     'security.tools.secret' => md5(uniqid()),
+    'security.tools.trigger-events' => true,
 
     // Password Reset Tool
 

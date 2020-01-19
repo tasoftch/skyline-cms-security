@@ -36,12 +36,9 @@ namespace Skyline\CMS\Security\Tool\Event;
 
 
 use Skyline\CMS\Security\UserSystem\Role;
-use TASoft\EventManager\Event\Event;
 
-class UpdateRoleEvent extends Event
+class UpdateRoleEvent extends RoleEvent
 {
-    /** @var Role */
-    private $role;
     /** @var string|null */
     private $name;
     /** @var string|null */
@@ -50,22 +47,6 @@ class UpdateRoleEvent extends Event
     private $options;
     /** @var Role|null */
     private $parentRole;
-
-    /**
-     * @return Role
-     */
-    public function getRole(): Role
-    {
-        return $this->role;
-    }
-
-    /**
-     * @param Role $role
-     */
-    public function setRole(Role $role): void
-    {
-        $this->role = $role;
-    }
 
     /**
      * @return string|null

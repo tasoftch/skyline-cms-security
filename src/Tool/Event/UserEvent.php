@@ -32,19 +32,31 @@
  *
  */
 
-//! Role management
-define("SKY_EVENT_USER_ROLE_ADD", "SKY_EVENT_USER_ROLE_ADD");
-define("SKY_EVENT_USER_ROLE_REMOVE", "SKY_EVENT_USER_ROLE_REMOVE");
-define("SKY_EVENT_USER_ROLE_UPDATE", 'SKY_EVENT_USER_ROLE_UPDATE');
+namespace Skyline\CMS\Security\Tool\Event;
 
-define("SKY_EVENT_USER_GROUP_ADD", "SKY_EVENT_USER_GROUP_ADD");
-define("SKY_EVENT_USER_GROUP_REMOVE", "SKY_EVENT_USER_GROUP_REMOVE");
-define("SKY_EVENT_USER_GROUP_UPDATE", 'SKY_EVENT_USER_GROUP_UPDATE');
 
-define("SKY_EVENT_USER_PASSWORD_UPDATE", 'SKY_EVENT_USER_PASSWORD_UPDATE');
+use Skyline\Security\Identity\IdentityInterface;
+use Skyline\Security\User\UserInterface;
+use TASoft\EventManager\Event\Event;
 
-define("SKY_EVENT_USER_ATTRIBUTE_UPDATE", 'SKY_EVENT_USER_ATTRIBUTE_UPDATE');
-define("SKY_EVENT_USER_ATTRIBUTE_REMOVE", 'SKY_EVENT_USER_ATTRIBUTE_REMOVE');
+class UserEvent extends Event
+{
+    /** @var UserInterface|IdentityInterface */
+    private $user;
 
-define("SKY_EVENT_USER_LOGOUT", 'SKY_EVENT_USER_LOGOUT');
+    /**
+     * @return UserInterface|IdentityInterface
+     */
+    public function getUser()
+    {
+        return $this->user;
+    }
 
+    /**
+     * @param UserInterface|IdentityInterface $user
+     */
+    public function setUser($user): void
+    {
+        $this->user = $user;
+    }
+}

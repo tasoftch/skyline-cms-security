@@ -294,22 +294,28 @@ return [
         UserTool::SERVICE_NAME => [
             AbstractFileConfiguration::SERVICE_CLASS => UserTool::class,
             AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'pdo' => '$PDO'
+                'pdo' => '$PDO',
+                'events' => '%security.tools.trigger-events%'
             ]
         ],
         PasswordResetTool::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CLASS => PasswordResetTool::class
+            AbstractFileConfiguration::SERVICE_CLASS => PasswordResetTool::class,
+            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+                'events' => '%security.tools.trigger-events%'
+            ]
         ],
         UserGroupTool::SERVICE_NAME => [
             AbstractFileConfiguration::SERVICE_CLASS => UserGroupTool::class,
             AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'pdo' => '$PDO'
+                'pdo' => '$PDO',
+                'events' => '%security.tools.trigger-events%'
             ]
         ],
         UserRoleTool::SERVICE_NAME => [
             AbstractFileConfiguration::SERVICE_CLASS => UserRoleTool::class,
             AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'pdo' => '$PDO'
+                'pdo' => '$PDO',
+                'events' => '%security.tools.trigger-events%'
             ]
         ],
         AttributeTool::SERVICE_NAME => [
@@ -317,7 +323,8 @@ return [
             AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
                 'pdo' => '$PDO',
                 'boundFileMap' => [
-                ]
+                ],
+                'events' => '%security.tools.trigger-events%'
             ]
         ]
     ]

@@ -35,8 +35,10 @@
 namespace Skyline\CMS\Security\Tool;
 
 use Skyline\CMS\Security\SecurityTrait;
+use Skyline\CMS\Security\Tool\Event\UserEvent;
 use Skyline\CMS\Security\Tool\Token\PasswordResetToken;
 use Skyline\CMS\Security\Tool\Token\TokenInterface;
+use Skyline\Kernel\Service\SkylineServiceManager;
 use Skyline\Security\Authentication\AuthenticationService;
 use Skyline\Security\Identity\IdentityInterface;
 use Skyline\Security\Identity\IdentityService;
@@ -62,6 +64,16 @@ class PasswordResetTool extends AbstractSecurityTool
     const ERROR_CODE_INVALID_ENCODED_PASSWORD = 531;
 
     use SecurityTrait;
+
+    /**
+     * PasswordResetTool constructor.
+     * @param $withEvents
+     */
+    public function __construct($withEvents = true)
+    {
+        if(!$withEvents)
+            $this->disableEvents();
+    }
 
     /**
      * This method prepares a user to perform a password reset request.
@@ -197,6 +209,11 @@ class PasswordResetTool extends AbstractSecurityTool
             if($password) {
                 $userProvider = $service->getUserProvider();
                 if($userProvider instanceof MutableUserProviderInterface) {
+                    if(!$this->disableEvents) {
+                        $e = new UserEvent();
+                        $e->setUser($user);
+                        SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_PASSWORD_UPDATE, $e, $user);
+                    }
                     return $userProvider->setCredentials($password, $user, $options) ? true : false;
                 } else
                     $errorCode = static::ERROR_CODE_IMMUTABLE_PROVIDER;

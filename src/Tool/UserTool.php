@@ -39,6 +39,8 @@ use Skyline\CMS\Security\Exception\InvalidIdentityTokenException;
 use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\CMS\Security\Identity\TemporaryIdentity;
 use Skyline\CMS\Security\SecurityTrait;
+use Skyline\CMS\Security\Tool\Event\UserEvent;
+use Skyline\Kernel\Service\SkylineServiceManager;
 use Skyline\PDO\PDOResourceInterface;
 use Skyline\Security\Identity\IdentityInterface;
 use Skyline\Security\Identity\IdentityService;
@@ -52,7 +54,7 @@ use TASoft\Util\PDO;
  * The user tool allows your application several actions around users, groups and roles.
  * @package Skyline\CMS\Security
  */
-class UserTool
+class UserTool extends AbstractSecurityTool
 {
     const SERVICE_NAME = 'userTool';
     use SecurityTrait {
@@ -80,10 +82,13 @@ class UserTool
     /**
      * SecurityTool constructor.
      * @param $PDO
+     * @param $withEvents
      */
-    public function __construct($PDO)
+    public function __construct($PDO, $withEvents = true)
     {
         $this->PDO = $PDO;
+        if(!$withEvents)
+            $this->disableEvents();
     }
 
     /**
@@ -158,6 +163,13 @@ class UserTool
                 if(!$provider->uninstallIdentity($identity, $response))
                     $done = false;
             }
+
+            if(!$this->disableEvents) {
+                $e = new UserEvent();
+                $e->setUser($identity);
+                SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_LOGOUT, $e, $identity, $installer);
+            }
+
             return $done;
         }
         return false;
@@ -284,6 +296,73 @@ WHERE user = $uid") as $record) {
                 return eval("return $roles;") ? true : false;
             }
         }
+        return false;
+    }
+
+    /**
+     * This method creates a new account request.
+     * It is designed to verify an email address before creating an account.
+     * Pack all necessary information into the request (as attributes) and pass it to this method.
+     * It will create an URL safe string that can be transmitted by
+     *
+     * @param string $username
+     * @param string $email
+     * @param string $secure
+     * @param array $attributes
+     * @param int $ttl
+     * @return string
+     * @throws \Exception
+     */
+    public function makeAccountRequest(string $username, string $email, string $secure, array $attributes = [], int $ttl = 60): string {
+        $key = hash( 'sha256', 'skyline-user-tool-account-request-token' );
+        $iv = substr( hash( 'sha256', $secure  ), 0, 16 );
+
+        $date = new DateTime("now +{$ttl}seconds");
+
+        return urlencode( base64_encode( openssl_encrypt( serialize([
+            'acct',
+            $username,
+            $email,
+            $attributes,
+            $date->format("Y-m-d G:i:s")
+        ]), "AES-256-CBC", $key, 0, $iv ) ) );
+    }
+
+    /**
+     * Decodes an account request
+     *
+     * @param string $request
+     * @param string $secure
+     * @param string|null $username
+     * @param string|null $email
+     * @param array|null $attributes
+     * @return bool
+     * @throws \Exception
+     */
+    public function decodeAccountRequest(string $request, string $secure, &$username = NULL, &$email = NULL, &$attributes = NULL): bool {
+        $key = hash( 'sha256', 'skyline-user-tool-account-request-token' );
+        $iv = substr( hash( 'sha256', $secure  ), 0, 16 );
+
+        $data = openssl_decrypt( base64_decode( urldecode( $request )), "AES-256-CBC", $key, 0, $iv  );
+        error_clear_last();
+        @(
+        list($hdr, $u, $e, $a, $date) = unserialize($data)
+        );
+        if($hdr == 'acct' && !error_get_last()) {
+            $date = new DateTime($date);
+            if($date->getTimestamp() >= (new DateTime("now"))->getTimestamp()) {
+                $username = $u;
+                $email = $e;
+                $attributes = $a;
+                return true;
+            } else {
+                trigger_error("Invalid token. Time is up, not yet valid", E_USER_WARNING);
+                return false;
+            }
+        } else
+            error_clear_last();
+
+        trigger_error("Invalid token. Could not decode", E_USER_WARNING);
         return false;
     }
 

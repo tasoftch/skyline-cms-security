@@ -32,19 +32,31 @@
  *
  */
 
-//! Role management
-define("SKY_EVENT_USER_ROLE_ADD", "SKY_EVENT_USER_ROLE_ADD");
-define("SKY_EVENT_USER_ROLE_REMOVE", "SKY_EVENT_USER_ROLE_REMOVE");
-define("SKY_EVENT_USER_ROLE_UPDATE", 'SKY_EVENT_USER_ROLE_UPDATE');
+namespace Skyline\CMS\Security\Tool\Event;
 
-define("SKY_EVENT_USER_GROUP_ADD", "SKY_EVENT_USER_GROUP_ADD");
-define("SKY_EVENT_USER_GROUP_REMOVE", "SKY_EVENT_USER_GROUP_REMOVE");
-define("SKY_EVENT_USER_GROUP_UPDATE", 'SKY_EVENT_USER_GROUP_UPDATE');
 
-define("SKY_EVENT_USER_PASSWORD_UPDATE", 'SKY_EVENT_USER_PASSWORD_UPDATE');
+use Skyline\CMS\Security\Tool\Attribute\AttributeInterface;
+use Skyline\CMS\Security\Tool\Attribute\Value\ValueContainer;
+use TASoft\EventManager\Event\Event;
 
-define("SKY_EVENT_USER_ATTRIBUTE_UPDATE", 'SKY_EVENT_USER_ATTRIBUTE_UPDATE');
-define("SKY_EVENT_USER_ATTRIBUTE_REMOVE", 'SKY_EVENT_USER_ATTRIBUTE_REMOVE');
+class AttributeEvent extends Event
+{
+    /** @var AttributeInterface|ValueContainer */
+    private $attribute;
 
-define("SKY_EVENT_USER_LOGOUT", 'SKY_EVENT_USER_LOGOUT');
+    /**
+     * @return AttributeInterface|ValueContainer
+     */
+    public function getAttribute()
+    {
+        return $this->attribute;
+    }
 
+    /**
+     * @param AttributeInterface|ValueContainer $attribute
+     */
+    public function setAttribute($attribute): void
+    {
+        $this->attribute = $attribute;
+    }
+}

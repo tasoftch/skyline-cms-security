@@ -34,12 +34,14 @@
 
 namespace Skyline\CMS\Security\Tool;
 
-use Skyline\CMS\Security\Tool\Event\NewRoleEvent;
+use Skyline\CMS\Security\Tool\Event\RoleEvent;
 use Skyline\CMS\Security\Tool\Event\UpdateRoleEvent;
 use Skyline\CMS\Security\UserSystem\Role;
 use Skyline\Kernel\Service\SkylineServiceManager;
 use Skyline\Security\Exception\SecurityException;
 use TASoft\Util\PDO;
+use TASoft\Util\ValueInjector;
+use Throwable;
 
 class UserRoleTool extends AbstractSecurityTool
 {
@@ -54,14 +56,16 @@ class UserRoleTool extends AbstractSecurityTool
     private $parentRoles;
     private $childRoles;
 
-
     /**
      * SecurityTool constructor.
      * @param $PDO
+     * @param $withEvents
      */
-    public function __construct($PDO)
+    public function __construct($PDO, $withEvents = true)
     {
         $this->PDO = $PDO;
+        if(!$withEvents)
+            $this->disableEvents();
     }
 
     /**
@@ -272,9 +276,9 @@ LEFT JOIN SKY_ROLE AS R10 ON R6.id = R9.parent");
 
 
         if(!$this->disableEvents) {
-            $ev = new NewRoleEvent();
+            $ev = new RoleEvent();
             $ev->setRole($r);
-            SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_ADD_ROLE, $ev);
+            SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_ROLE_ADD, $ev, $r);
         }
 
 
@@ -315,9 +319,9 @@ LEFT JOIN SKY_ROLE AS R10 ON R6.id = R9.parent");
         $this->checkRoleIntegrity($role, "Role %s is internal and can not be removed");
 
         if(!$this->disableEvents) {
-            $ev = new NewRoleEvent();
+            $ev = new RoleEvent();
             $ev->setRole($role);
-            SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_REMOVE_ROLE, $ev);
+            SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_ROLE_REMOVE, $ev, $role);
         }
 
         try {
@@ -330,7 +334,7 @@ LEFT JOIN SKY_ROLE AS R10 ON R6.id = R9.parent");
                 $self->exec("DELETE FROM SKY_USER_ROLE WHERE role = $rid");
                 $self->exec("DELETE FROM SKY_ROLE WHERE id = $rid");
             });
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             trigger_error($exception->getMessage(), E_USER_WARNING);
             return false;
         }
@@ -372,7 +376,12 @@ LEFT JOIN SKY_ROLE AS R10 ON R6.id = R9.parent");
             $ev->setOptions($newOptions);
             $ev->setDescription($newDescription);
             $ev->setName($newName);
-            SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_UPDATE_ROLE, $ev);
+
+            SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_ROLE_UPDATE, $ev, $role);
+
+            $newName = $ev->getName();
+            $newOptions = $ev->getOptions();
+            $newDescription = $ev->getDescription();
         }
 
         try {
@@ -388,12 +397,10 @@ LEFT JOIN SKY_ROLE AS R10 ON R6.id = R9.parent");
                     $PDO->inject("UPDATE SKY_ROLE SET options = ? WHERE id = $rid")->send([$newOptions]);
             });
 
-            (function() use ($role, $newDescription, $newOptions) {
-                if(NULL !== $newDescription)
-                    $role->description = $newDescription;
-                if(NULL !== $newOptions)
-                    $role->options = $newOptions;
-            })->bindTo($role, Role::class)();
+            $vi = new ValueInjector($role, Role::class);
+            $vi->description = $newDescription;
+            $vi->options = $newOptions;
+
             if(NULL !== $newName) {
                 $data = explode(".", $role->getRole());
                 array_pop($data);
@@ -403,13 +410,12 @@ LEFT JOIN SKY_ROLE AS R10 ON R6.id = R9.parent");
                 unset($this->roleIDNameMap[ $role->getRole() ]);
                 $this->roleIDNameMap[ $newRole ] = $role->getId();
 
-                (function() use ($role, $newRole) {
-                    $role->role = $newRole;
-                })->bindTo($role, \Skyline\Security\Role\Role::class)();
+                $vi->setObject($role, \Skyline\Security\Role\Role::class);
+                $vi->role = $newRole;
             }
 
             return true;
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             trigger_error($exception->getMessage(), E_USER_WARNING);
             return false;
         }
@@ -437,7 +443,7 @@ LEFT JOIN SKY_ROLE AS R10 ON R6.id = R9.parent");
                 $ev = new UpdateRoleEvent();
                 $ev->setRole($role);
                 $ev->setParentRole($parent);
-                SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_UPDATE_ROLE, $ev);
+                SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_ROLE_UPDATE, $ev);
             }
 
             $pid = $parent->getId();
@@ -451,7 +457,7 @@ LEFT JOIN SKY_ROLE AS R10 ON R6.id = R9.parent");
                 $ev = new UpdateRoleEvent();
                 $ev->setRole($role);
                 $ev->setParentRole(NULL);
-                SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_UPDATE_ROLE, $ev);
+                SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_ROLE_UPDATE, $ev);
             }
 
             $this->PDO->exec("UPDATE SKY_ROLE SET parent = 0 WHERE id = $rid");

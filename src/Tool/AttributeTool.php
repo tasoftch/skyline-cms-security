@@ -39,6 +39,8 @@ use Skyline\CMS\Security\Tool\Attribute\AbstractAttribute;
 use Skyline\CMS\Security\Tool\Attribute\AttributeInterface;
 use Skyline\CMS\Security\Tool\Attribute\Value\FileValueContainer;
 use Skyline\CMS\Security\Tool\Attribute\Value\ValueContainer;
+use Skyline\CMS\Security\Tool\Event\AttributeEvent;
+use Skyline\Kernel\Service\SkylineServiceManager;
 use Skyline\PDO\PDOResourceInterface;
 use TASoft\Service\ServiceManager;
 use TASoft\Util\PDO;
@@ -80,14 +82,19 @@ class AttributeTool extends AbstractSecurityTool
         self::ATTR_LOGO_ID => "$(/)/Components/img/Benutzer-Bilder"
     ];
 
+
     /**
      * SecurityTool constructor.
      * @param $PDO
+     * @param $boundFilesMap
+     * @param $withEvents
      */
-    public function __construct($PDO, $boundFilesMap = [])
+    public function __construct($PDO, $boundFilesMap, $withEvents = true)
     {
         $this->PDO = $PDO;
         $this->boundFilesMap = $boundFilesMap;
+        if(!$withEvents)
+            $this->disableEvents();
     }
 
     /**
@@ -349,6 +356,13 @@ ORDER BY sortierung, name") as $record) {
                     $value->getAttribute()->convertValueToDB( $value->getValue() )
                 ]);
             }
+
+            if(!$this->disableEvents) {
+                $e = new AttributeEvent();
+                $e->setAttribute($value);
+                SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_ATTRIBUTE_UPDATE, $e, $value);
+            }
+
             return true;
         }
         return false;
@@ -363,6 +377,13 @@ ORDER BY sortierung, name") as $record) {
      */
     public function removeAttributeValue($attribute, $user) {
         if($aid = $this->getAttributeID($attribute)) {
+
+            if(!$this->disableEvents) {
+                $e = new AttributeEvent();
+                $e->setAttribute($attribute);
+                SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_ATTRIBUTE_REMOVE, $e, $attribute, $user);
+            }
+
             if($user instanceof PDOResourceInterface)
                 $user = $user->getID();
 

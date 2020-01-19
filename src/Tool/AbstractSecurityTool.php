@@ -50,6 +50,13 @@ abstract class AbstractSecurityTool
     }
 
     /**
+     * Call this method to enable all events that might be triggered by security tools
+     */
+    public function enableEvents() {
+        $this->disableEvents = false;
+    }
+
+    /**
      * @param $data
      * @return string
      */
