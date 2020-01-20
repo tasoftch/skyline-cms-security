@@ -369,10 +369,10 @@ WHERE user = $uid") as $record) {
      * @param string|null $username
      * @param string|null $email
      * @param array|null $attributes
-     * @return bool
+     * @return int
      * @throws \Exception
      */
-    public function decodeAccountRequest(string $request, string $secure, &$username = NULL, &$email = NULL, &$attributes = NULL): bool {
+    public function decodeAccountRequest(string $request, string $secure, &$username = NULL, &$email = NULL, &$attributes = NULL): int {
         $key = hash( 'sha256', 'skyline-user-tool-account-request-token' );
         $iv = substr( hash( 'sha256', $secure  ), 0, 16 );
 
@@ -387,16 +387,16 @@ WHERE user = $uid") as $record) {
                 $username = $u;
                 $email = $e;
                 $attributes = $a;
-                return true;
+                return 1;
             } else {
                 trigger_error("Invalid token. Time is up, not yet valid", E_USER_WARNING);
-                return false;
+                return -1;
             }
         } else
             error_clear_last();
 
         trigger_error("Invalid token. Could not decode", E_USER_WARNING);
-        return false;
+        return 0;
     }
 
     /**
@@ -447,7 +447,7 @@ WHERE user = $uid") as $record) {
         $data = openssl_decrypt( base64_decode($token), "AES-256-CBC", $key, 0, $iv  );
         error_clear_last();
         @(
-            list($hdr, $reliability, $token, $credentials, $options, $date) = unserialize($data)
+        list($hdr, $reliability, $token, $credentials, $options, $date) = unserialize($data)
         );
         if($hdr == 'idty' && !error_get_last()) {
             $date = new DateTime($date);
