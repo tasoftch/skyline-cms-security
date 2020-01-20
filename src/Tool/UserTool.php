@@ -138,6 +138,39 @@ class UserTool extends AbstractSecurityTool
         return -1;
     }
 
+    /**
+     * This method checks if anyhow a user can be fetched from Skyline given an id, username or email address
+     *
+     * @param string|int $user
+     * @return bool
+     */
+    public function exists($user): bool {
+        $c = $this->getPDO()->selectFieldValue("SELECT count(id) AS c FROM SKY_USER WHERE id = :user OR username = :user OR ((options & 8) = 8 AND email = :user)", 'c', ['user' => $user]);
+        return $c > 0 ? true : false;
+    }
+
+    /**
+     * Checks, if a username exists.
+     *
+     * @param string $username
+     * @return bool
+     */
+    public function existsUsername(string $username): bool {
+        $c = $this->getPDO()->selectFieldValue("SELECT count(id) AS c FROM SKY_USER WHERE username = :user", 'c', ['user' => $username]);
+        return $c > 0 ? true : false;
+    }
+
+    /**
+     * Checks, if an email address exists.
+     *
+     * @param string $email
+     * @return bool
+     */
+    public function existsEmail(string $email): bool {
+        $c = $this->getPDO()->selectFieldValue("SELECT count(id) AS c FROM SKY_USER WHERE email = :user", 'c', ['user' => $email]);
+        return $c > 0 ? true : false;
+    }
+
 
     /**
      * Performs a logout for a given identity or the current logged user's identity
