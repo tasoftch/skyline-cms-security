@@ -2,7 +2,10 @@
 
 namespace Skyline\CMS\Security\Controller;
 
+use ArrayAccess;
 use Skyline\CMS\Security\Exception\CSRFMissmatchException;
+use Skyline\Render\Model\ArrayModel;
+use Skyline\Render\Model\ModelInterface;
 use Skyline\Security\CSRF\CSRFToken;
 use Skyline\Security\CSRF\CSRFTokenManager;
 use Skyline\Security\CSRF\InputCSRFToken;
@@ -12,6 +15,8 @@ use TASoft\Service\ServiceManager;
 /**
  * Trait CSRFManagementTrait
  * @package Skyline\CMS\Security\Controller
+ * @method getModel()
+ * @property-read $modelClassName
  */
 trait CSRFManagementTrait
 {
@@ -52,8 +57,9 @@ trait CSRFManagementTrait
      * Makes a HTML token that can be printed directly.
      *
      * @param string|CSRFToken $token
+     * @return InputCSRFToken
      */
-    public function renderCSRF($token = 'skyline-csrf-token') {
+    public function buildHTMLCsrfToken($token = 'skyline-csrf-token') {
         if(!($token instanceof CSRFToken))
             $token = $this->getCSRFManager()->getToken( $token );
 
@@ -61,5 +67,31 @@ trait CSRFManagementTrait
             $token->getId(),
             $token->getValue()
         );
+    }
+
+
+    /**
+     * Build a CSRF token and adds it to an existing model or creates a new model
+     *
+     * @param string $tokenID
+     * @param ArrayAccess|ArrayModel|NULL $model
+     * @param string $fieldName
+     * @return ArrayAccess|ArrayModel|ModelInterface|null
+     * @see AbstractActionController::$modelClassName
+     */
+    public function buildCSRFModel(string $tokenID = 'skyline-csrf-token', $model = NULL, string $fieldName = 'CSRF') {
+        if(!$model) {
+            if(method_exists($this, 'getModel'))
+                $model = $this->getModel();
+            elseif(property_exists($this, 'modelClassName'))
+                $model = new $this->modelClassName;
+            else
+                return NULL;
+        }
+
+        $csrf = $this->getCSRFManager();
+        $model[ $fieldName ] = $csrf->getToken( $tokenID );
+
+        return $model;
     }
 }
