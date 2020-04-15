@@ -37,6 +37,7 @@ namespace Skyline\CMS\Security\Plugin;
 
 use Skyline\Application\Controller\CustomRenderInformationInterface;
 use Skyline\Application\Event\PerformActionEvent;
+use Skyline\CMS\Security\Controller\SecurityActionControllerInterface;
 use Skyline\CMS\Security\Exception\InvalidUserException;
 use Skyline\CMS\Security\Exception\RequiredGroupMembershipException;
 use Skyline\CMS\Security\Exception\RequiredRolesException;
@@ -79,6 +80,10 @@ class SecurityAccessControlPlugin
             $ctx = ServiceManager::generalServiceManager()->get("renderContext");
             $ctx->setRenderInfo($renderInfo);
             $event->setRenderInformation($renderInfo);
+
+            if($actionController instanceof SecurityActionControllerInterface) {
+            	$actionController->prepareActionForChallenge($description, $info);
+			}
 
             $this->performCodeUnderChallenge(function() use ($info, $event) {
                 if(isset($info["l"])) {
