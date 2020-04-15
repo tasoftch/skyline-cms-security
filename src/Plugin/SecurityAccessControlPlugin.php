@@ -82,7 +82,7 @@ class SecurityAccessControlPlugin
             $event->setRenderInformation($renderInfo);
 
             if($actionController instanceof SecurityActionControllerInterface) {
-            	$actionController->prepareActionForChallenge($description, $info);
+            	$actionController->prepareActionForChallenge($description, $renderInfo, $info);
 			}
 
             $this->performCodeUnderChallenge(function() use ($info, $event) {

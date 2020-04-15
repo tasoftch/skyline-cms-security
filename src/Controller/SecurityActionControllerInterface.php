@@ -36,6 +36,7 @@ namespace Skyline\CMS\Security\Controller;
 
 
 use Skyline\Application\Controller\ActionControllerInterface;
+use Skyline\Render\Info\RenderInfoInterface;
 use Skyline\Router\Description\ActionDescriptionInterface;
 
 interface SecurityActionControllerInterface extends ActionControllerInterface
@@ -44,8 +45,9 @@ interface SecurityActionControllerInterface extends ActionControllerInterface
 	 * This method gets called on an action controller before challenging the client.
 	 *
 	 * @param ActionDescriptionInterface $actionDescription
+	 * @param RenderInfoInterface $renderInfo
 	 * @param $challengeInfo
 	 * @return void
 	 */
-	public function prepareActionForChallenge(ActionDescriptionInterface $actionDescription, $challengeInfo);
+	public function prepareActionForChallenge(ActionDescriptionInterface $actionDescription, RenderInfoInterface $renderInfo,  $challengeInfo);
 }
