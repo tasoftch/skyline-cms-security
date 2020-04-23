@@ -1,7 +1,6 @@
 {
   "name": "skyline/cms-security",
   "license": "BSD-3-Clause",
-  "minimum-stability": "dev",
   "authors": [
     {
       "name": "Thomas Abplanalp",
@@ -19,14 +18,14 @@
   "require" : {
     "php": "^7.2",
     "ext-openssl": "*",
-    "skyline/security": "dev-master",
-    "skyline/core-application": "dev-master",
-    "skyline/pdo": "dev-master",
-    "tasoft/value-injector": "dev-master"
+    "skyline/security": "^0.8",
+    "skyline/core-application": "^0.8",
+    "skyline/pdo": "^0.9",
+    "tasoft/value-injector": "^1.0"
   },
   "require-dev": {
     "phpunit/phpunit": "^6",
-    "skyline/compiler": "dev-master",
-    "skyline/exposed-symbols": "dev-master"
+    "skyline/compiler": "^0.8",
+    "skyline/exposed-symbols": "^0.8"
   }
 }
