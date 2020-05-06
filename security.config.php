@@ -57,6 +57,7 @@ use Skyline\Security\Authorization\AuthorizationService;
 use Skyline\Security\Authorization\Voter\RoleChainVoter;
 use Skyline\Security\Authorization\Voter\RoleRootVoter;
 use Skyline\Security\Encoder\BCryptPasswordEncoder;
+use Skyline\Security\Encoder\HttpDigestA1Encoder;
 use Skyline\Security\Encoder\MessageDigestPasswordEncoder;
 use Skyline\Security\Encoder\PlaintextPasswordEncoder;
 use Skyline\Security\Encoder\PlaintextSaltPasswordEncoder;
@@ -68,255 +69,271 @@ use Skyline\Security\Identity\Provider\HTTP\DigestIdentityProvider;
 use Skyline\Security\Identity\Provider\HTTP\POSTFieldsIdentityProvider;
 use Skyline\Security\Identity\Provider\Session\RememberMeIdentityProvider;
 use Skyline\Security\Identity\Provider\Session\SessionIdentityProvider;
+use Skyline\Security\User\Provider\InitialUserProvider;
 use TASoft\Service\Config\AbstractFileConfiguration;
 
 return [
-    MainKernelConfig::CONFIG_SERVICES => [
-        IdentityServiceFactory::IDENTITY_SERVICE => [
-            AbstractFileConfiguration::SERVICE_CONTAINER => IdentityServiceFactory::class,
-            AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
-                IdentityServiceFactory::CONFIG_PROVIDERS => [
-                    // The anonymous provider
-                    IdentityServiceFactory::PROVIDER_NAME_ANONYMOUS => [
-                        AbstractFileConfiguration::SERVICE_CLASS => AnonymousIdentityProvider::class
-                    ],
+	MainKernelConfig::CONFIG_SERVICES => [
+		IdentityServiceFactory::IDENTITY_SERVICE => [
+			AbstractFileConfiguration::SERVICE_CONTAINER => IdentityServiceFactory::class,
+			AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
+				IdentityServiceFactory::CONFIG_PROVIDERS => [
+					// The anonymous provider
+					IdentityServiceFactory::PROVIDER_NAME_ANONYMOUS => [
+						AbstractFileConfiguration::SERVICE_CLASS => AnonymousIdentityProvider::class
+					],
 
-                    // Remember Me
-                    IdentityServiceFactory::PROVIDER_NAME_REMEMBER_ME => [
-                        AbstractFileConfiguration::SERVICE_CLASS => RememberMeIdentityProvider::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'providerKey' => '%security.session.provider%',
-                            'secret' => '%security.remember-me.secret%',
-                            'options' => '%security.remember-me.options%'
-                        ]
-                    ],
+					// Remember Me
+					IdentityServiceFactory::PROVIDER_NAME_REMEMBER_ME => [
+						AbstractFileConfiguration::SERVICE_CLASS => RememberMeIdentityProvider::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'providerKey' => '%security.session.provider%',
+							'secret' => '%security.remember-me.secret%',
+							'options' => '%security.remember-me.options%'
+						]
+					],
 
-                    // Session Provider
-                    IdentityServiceFactory::PROVIDER_NAME_SESSION => [
-                        AbstractFileConfiguration::SERVICE_CLASS => SessionIdentityProvider::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'providerKey' => '%security.session.provider%',
-                            'secret' => '%security.session.secret%',
-                            'options' => '%security.session.options%'
-                        ]
-                    ],
+					// Session Provider
+					IdentityServiceFactory::PROVIDER_NAME_SESSION => [
+						AbstractFileConfiguration::SERVICE_CLASS => SessionIdentityProvider::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'providerKey' => '%security.session.provider%',
+							'secret' => '%security.session.secret%',
+							'options' => '%security.session.options%'
+						]
+					],
 
-                    // HTTP Basic Authentication
-                    IdentityServiceFactory::PROVIDER_NAME_HTTP_BASIC => [
-                        AbstractFileConfiguration::SERVICE_CLASS => BasicIdentityProvider::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'challenge' => '$' . ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE
-                        ]
-                    ],
+					// HTTP Basic Authentication
+					IdentityServiceFactory::PROVIDER_NAME_HTTP_BASIC => [
+						AbstractFileConfiguration::SERVICE_CLASS => BasicIdentityProvider::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'challenge' => '$' . ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE
+						]
+					],
 
-                    // HTTP Digest Authentication
-                    IdentityServiceFactory::PROVIDER_NAME_HTTP_DIGEST => [
-                        AbstractFileConfiguration::SERVICE_CLASS => DigestIdentityProvider::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'challenge' => '$' . ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE
-                        ]
-                    ],
+					// HTTP Digest Authentication
+					IdentityServiceFactory::PROVIDER_NAME_HTTP_DIGEST => [
+						AbstractFileConfiguration::SERVICE_CLASS => DigestIdentityProvider::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'challenge' => '$' . ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE
+						]
+					],
 
-                    // HTML form sent with POST method
-                    IdentityServiceFactory::PROVIDER_NAME_HTTP_POST => [
-                        AbstractFileConfiguration::SERVICE_CLASS => POSTFieldsIdentityProvider::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'tokenFieldName' => "%security.http.post.tokenName%",
-                            "credentialFieldName" => '%security.http.post.credentialName%'
-                        ]
-                    ]
-                ],
-                IdentityServiceFactory::CONFIG_ENABLED => '%security.identity.order%'
-            ],
-            AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => IdentityService::class
-        ],
-        ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE => [
-            AbstractFileConfiguration::SERVICE_CLASS => DigestChallenge::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'realm' => '%security.http.digest.realm%',
-                'nonce' => '%security.http.digest.nonce%',
-                'opaque' => '%security.http.digest.opaque%'
-            ]
-        ],
-        ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE => [
-            AbstractFileConfiguration::SERVICE_CLASS => BasicChallenge::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'realm' => '%security.http.basic.realm%'
-            ]
-        ],
-        ChallengeManager::HTTP_POST_CHALLENGE_SERVICE => [
-            AbstractFileConfiguration::SERVICE_CLASS => TemplateChallenge::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'mainTemplateName' => '%security.challenge.main-template%',
-                "childTemplateNames" => '%security.challenge.child-templates%'
-            ]
-        ],
-        ChallengeManager::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CLASS => ChallengeManager::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'challengeMap' => [
-                    BasicIdentityProvider::class => ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE,
-                    DigestIdentityProvider::class => ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE,
-                    POSTFieldsIdentityProvider::class => ChallengeManager::HTTP_POST_CHALLENGE_SERVICE
-                ],
-                'reliabilities' => [
-                    IdentityInterface::RELIABILITY_HTTP => ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE,
-                    IdentityInterface::RELIABILITY_HTTP-1 => ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE,
-                    IdentityInterface::RELIABILITY_HTML_FORM => ChallengeManager::HTTP_POST_CHALLENGE_SERVICE
-                ]
-            ]
-        ],
+					// HTML form sent with POST method
+					IdentityServiceFactory::PROVIDER_NAME_HTTP_POST => [
+						AbstractFileConfiguration::SERVICE_CLASS => POSTFieldsIdentityProvider::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'tokenFieldName' => "%security.http.post.tokenName%",
+							"credentialFieldName" => '%security.http.post.credentialName%'
+						]
+					]
+				],
+				IdentityServiceFactory::CONFIG_ENABLED => '%security.identity.order%'
+			],
+			AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => IdentityService::class
+		],
+		ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE => [
+			AbstractFileConfiguration::SERVICE_CLASS => DigestChallenge::class,
+			AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+				'realm' => '%security.http.digest.realm%',
+				'nonce' => '%security.http.digest.nonce%',
+				'opaque' => '%security.http.digest.opaque%'
+			]
+		],
+		ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE => [
+			AbstractFileConfiguration::SERVICE_CLASS => BasicChallenge::class,
+			AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+				'realm' => '%security.http.basic.realm%'
+			]
+		],
+		ChallengeManager::HTTP_POST_CHALLENGE_SERVICE => [
+			AbstractFileConfiguration::SERVICE_CLASS => TemplateChallenge::class,
+			AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+				'mainTemplateName' => '%security.challenge.main-template%',
+				"childTemplateNames" => '%security.challenge.child-templates%'
+			]
+		],
+		ChallengeManager::SERVICE_NAME => [
+			AbstractFileConfiguration::SERVICE_CLASS => ChallengeManager::class,
+			AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+				'challengeMap' => [
+					BasicIdentityProvider::class => ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE,
+					DigestIdentityProvider::class => ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE,
+					POSTFieldsIdentityProvider::class => ChallengeManager::HTTP_POST_CHALLENGE_SERVICE
+				],
+				'reliabilities' => [
+					IdentityInterface::RELIABILITY_HTTP => ChallengeManager::HTTP_DIGEST_CHALLENGE_SERVICE,
+					IdentityInterface::RELIABILITY_HTTP-1 => ChallengeManager::HTTP_BASIC_CHALLENGE_SERVICE,
+					IdentityInterface::RELIABILITY_HTML_FORM => ChallengeManager::HTTP_POST_CHALLENGE_SERVICE
+				]
+			]
+		],
 
-        AuthenticationServiceFactory::AUTHENTICATION_SERVICE => [
-            AbstractFileConfiguration::SERVICE_CONTAINER => AuthenticationServiceFactory::class,
-            AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
-                AuthenticationServiceFactory::PASSWORD_ENCODERS => [
-                    MessageDigestPasswordEncoder::class => [
-                        AbstractFileConfiguration::SERVICE_CLASS => MessageDigestPasswordEncoder::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'algorythm' => 'sha512',
-                            'base64' => true,
-                            'iterations' => 5000
-                        ]
-                    ],
-                    BCryptPasswordEncoder::class => [
-                        AbstractFileConfiguration::SERVICE_CLASS => BCryptPasswordEncoder::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'cost' => 30,
-                        ]
-                    ],
-                    PlaintextSaltPasswordEncoder::class => [
-                        AbstractFileConfiguration::SERVICE_CLASS => PlaintextSaltPasswordEncoder::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'caseInsensitive' => '%security.password.ignoreCase%',
-                        ]
-                    ],
-                    PlaintextPasswordEncoder::class => [
-                        AbstractFileConfiguration::SERVICE_CLASS => PlaintextPasswordEncoder::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'caseInsensitive' => '%security.password.ignoreCase%',
-                        ]
-                    ]
-                ],
-                AuthenticationServiceFactory::ANONYMOUT_USER_ID => '%security.user.anonymous%',
-                AuthenticationServiceFactory::ALLOWS_REMEMBER_ME => '%security.allows-remember-me%',
-                AuthenticationServiceFactory::USER_PROVIDERS => [
-                    [
-                        AbstractFileConfiguration::SERVICE_CLASS => UserProvider::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'PDO' => '$PDO'
-                        ]
-                    ]
-                ],
-                AuthenticationServiceFactory::VALIDATORS => [
-                    AuthenticationServiceFactory::VALIDATOR_CLIENT_BRUTE_FORCE => [
-                        AbstractFileConfiguration::SERVICE_CLASS => BruteForceByClientIPValidatorFactory::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'file' => '%security.persistence%',
-                            'attempts' => '%security.brute-force.client.maximal.attempts%',
-                            'blocking' => '%security.brute-force.client.blocking.interval%'
-                        ]
-                    ],
-                    AuthenticationServiceFactory::VALIDATOR_SERVER_BRUTE_FORCE => [
-                        AbstractFileConfiguration::SERVICE_CLASS => BruteForceByServerURIValidatorFactory::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'file' => '%security.persistence%',
-                            'attempts' => '%security.brute-force.server.maximal.attempts%',
-                            'blocking' => '%security.brute-force.server.blocking.interval%'
-                        ]
-                    ],
-                    AuthenticationServiceFactory::VALIDATOR_AUTO_LOGOUT => [
-                        AbstractFileConfiguration::SERVICE_CLASS => AutoLogoutValidatorFactory::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'file' => '%security.persistence%',
-                            'interval' => '%security.autologout.maximal-inactive%'
-                        ]
-                    ],
-                    AuthenticationServiceFactory::VALIDATOR_PERMISSION_CHANGED => [
-                        AbstractFileConfiguration::SERVICE_CLASS => PermissionChangedValidator::class
-                    ],
-                    AuthenticationServiceFactory::VALIDATOR_UPDATE_LAST_LOGIN_DATE => [
-                        AbstractFileConfiguration::SERVICE_CLASS => UpdateLastLoginValidator::class,
-                        AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                            'db_column_name' => 'lastLoginDate',
-                            'min_reliability' => IdentityInterface::RELIABILITY_HTML_FORM,
+		AuthenticationServiceFactory::AUTHENTICATION_SERVICE => [
+			AbstractFileConfiguration::SERVICE_CONTAINER => AuthenticationServiceFactory::class,
+			AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
+				AuthenticationServiceFactory::PASSWORD_ENCODERS => [
+					MessageDigestPasswordEncoder::class => [
+						AbstractFileConfiguration::SERVICE_CLASS => MessageDigestPasswordEncoder::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'algorythm' => 'sha512',
+							'base64' => true,
+							'iterations' => 5000
+						]
+					],
+					BCryptPasswordEncoder::class => [
+						AbstractFileConfiguration::SERVICE_CLASS => BCryptPasswordEncoder::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'cost' => 30,
+						]
+					],
+					HttpDigestA1Encoder::class => [
+						AbstractFileConfiguration::SERVICE_CLASS => HttpDigestA1Encoder::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'realm' => '%security.http.digest.realm%',
+							'user' => '' // Read from options dynamically
+						]
+					],
+					PlaintextSaltPasswordEncoder::class => [
+						AbstractFileConfiguration::SERVICE_CLASS => PlaintextSaltPasswordEncoder::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'caseInsensitive' => '%security.password.ignoreCase%',
+							'defaultSalt' => '%security.password.default-salt%'
+						]
+					],
+					PlaintextPasswordEncoder::class => [
+						AbstractFileConfiguration::SERVICE_CLASS => PlaintextPasswordEncoder::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'caseInsensitive' => '%security.password.ignoreCase%',
+						]
+					]
+				],
+				AuthenticationServiceFactory::ANONYMOUT_USER_ID => '%security.user.anonymous%',
+				AuthenticationServiceFactory::ALLOWS_REMEMBER_ME => '%security.allows-remember-me%',
+				AuthenticationServiceFactory::USER_PROVIDERS => [
+					AuthenticationServiceFactory::USER_PROVIDER_DATABASE_NAME => [
+						AbstractFileConfiguration::SERVICE_CLASS => UserProvider::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'PDO' => '$PDO'
+						]
+					],
+					AuthenticationServiceFactory::USER_PROVIDER_INITIAL_NAME => [
+						AbstractFileConfiguration::SERVICE_CLASS => InitialUserProvider::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'username' => '%security.initial.username%',
+							'password' => '%security.initial.password%'
+						]
+					]
+				],
+				AuthenticationServiceFactory::VALIDATORS => [
+					AuthenticationServiceFactory::VALIDATOR_CLIENT_BRUTE_FORCE => [
+						AbstractFileConfiguration::SERVICE_CLASS => BruteForceByClientIPValidatorFactory::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'file' => '%security.persistence%',
+							'attempts' => '%security.brute-force.client.maximal.attempts%',
+							'blocking' => '%security.brute-force.client.blocking.interval%'
+						]
+					],
+					AuthenticationServiceFactory::VALIDATOR_SERVER_BRUTE_FORCE => [
+						AbstractFileConfiguration::SERVICE_CLASS => BruteForceByServerURIValidatorFactory::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'file' => '%security.persistence%',
+							'attempts' => '%security.brute-force.server.maximal.attempts%',
+							'blocking' => '%security.brute-force.server.blocking.interval%'
+						]
+					],
+					AuthenticationServiceFactory::VALIDATOR_AUTO_LOGOUT => [
+						AbstractFileConfiguration::SERVICE_CLASS => AutoLogoutValidatorFactory::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'file' => '%security.persistence%',
+							'interval' => '%security.autologout.maximal-inactive%'
+						]
+					],
+					AuthenticationServiceFactory::VALIDATOR_PERMISSION_CHANGED => [
+						AbstractFileConfiguration::SERVICE_CLASS => PermissionChangedValidator::class
+					],
+					AuthenticationServiceFactory::VALIDATOR_UPDATE_LAST_LOGIN_DATE => [
+						AbstractFileConfiguration::SERVICE_CLASS => UpdateLastLoginValidator::class,
+						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+							'db_column_name' => 'lastLoginDate',
+							'min_reliability' => IdentityInterface::RELIABILITY_HTML_FORM,
 							'events' => '%security.tools.trigger-events%'
-                        ]
-                    ]
-                ],
-                AuthenticationServiceFactory::ENABLED_VALIDATORS => '%security.validators.enabled%',
-                AuthenticationServiceFactory::ENABLED_PASSWORD_ENCODERS => '%security.password-encoders.enabled%',
-                AuthenticationServiceFactory::VALIDATOR_INSTALLER_NAME => IdentityInstaller::SERVICE_NAME
-            ],
-            AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthenticationService::class
-        ],
-        IdentityInstaller::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CONTAINER => IdentityInstallerServiceFactory::class,
-            AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
-                IdentityInstallerServiceFactory::IDENTITY_SERVICE_NAME => IdentityServiceFactory::IDENTITY_SERVICE,
-                IdentityInstallerServiceFactory::INSTALLABLES => [
-                    // Here are available mappings
-                    // This means, if the key identity provider successfully creates an identity that was authenticated,
-                    // then all providers in values get an install identity command.
-                    // Please note that classes are compared by names (not instanceof)
-                    POSTFieldsIdentityProvider::class => [
-                        POSTFieldsIdentityProvider::class,
-                        SessionIdentityProvider::class,
-                        RememberMeIdentityProvider::class
-                    ],
-                    BasicIdentityProvider::class => [
-                        BasicIdentityProvider::class
-                    ],
-                    DigestIdentityProvider::class => [
-                        DigestIdentityProvider::class
-                    ],
-                    AnonymousIdentityProvider::class => [
-                        AnonymousIdentityProvider::class
-                    ]
-                ]
-            ],
-            AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => IdentityInstaller::class
-        ],
-        AuthorizationServiceFactory::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CONTAINER => AuthorizationServiceFactory::class,
-            AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
-                AuthorizationServiceFactory::VOTERS => [
-                    RoleRootVoter::class,
-                    RoleChainVoter::class
-                ],
-                AuthorizationServiceFactory::STRATEGY => '%security.authorization.strategy%',
-                AuthorizationServiceFactory::ALLOW_IF_ABSTAIN => '%security.authorization.allowIfAllAbstain%',
-                AuthorizationServiceFactory::ALLOW_IF_EQUAL => '%security.authorization.allowIfEqualGrantedAndDenied%',
-            ],
-            AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthorizationService::class
-        ],
+						]
+					]
+				],
+				AuthenticationServiceFactory::ENABLED_VALIDATORS => '%security.validators.enabled%',
+				AuthenticationServiceFactory::ENABLED_PASSWORD_ENCODERS => '%security.password-encoders.enabled%',
+				AuthenticationServiceFactory::VALIDATOR_INSTALLER_NAME => IdentityInstaller::SERVICE_NAME
+			],
+			AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthenticationService::class
+		],
+		IdentityInstaller::SERVICE_NAME => [
+			AbstractFileConfiguration::SERVICE_CONTAINER => IdentityInstallerServiceFactory::class,
+			AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
+				IdentityInstallerServiceFactory::IDENTITY_SERVICE_NAME => IdentityServiceFactory::IDENTITY_SERVICE,
+				IdentityInstallerServiceFactory::INSTALLABLES => [
+					// Here are available mappings
+					// This means, if the key identity provider successfully creates an identity that was authenticated,
+					// then all providers in values get an install identity command.
+					// Please note that classes are compared by names (not instanceof)
+					POSTFieldsIdentityProvider::class => [
+						POSTFieldsIdentityProvider::class,
+						SessionIdentityProvider::class,
+						RememberMeIdentityProvider::class
+					],
+					BasicIdentityProvider::class => [
+						BasicIdentityProvider::class
+					],
+					DigestIdentityProvider::class => [
+						DigestIdentityProvider::class
+					],
+					AnonymousIdentityProvider::class => [
+						AnonymousIdentityProvider::class
+					]
+				]
+			],
+			AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => IdentityInstaller::class
+		],
+		AuthorizationServiceFactory::SERVICE_NAME => [
+			AbstractFileConfiguration::SERVICE_CONTAINER => AuthorizationServiceFactory::class,
+			AbstractFileConfiguration::SERVICE_INIT_CONFIGURATION => [
+				AuthorizationServiceFactory::VOTERS => [
+					RoleRootVoter::class,
+					RoleChainVoter::class
+				],
+				AuthorizationServiceFactory::STRATEGY => '%security.authorization.strategy%',
+				AuthorizationServiceFactory::ALLOW_IF_ABSTAIN => '%security.authorization.allowIfAllAbstain%',
+				AuthorizationServiceFactory::ALLOW_IF_EQUAL => '%security.authorization.allowIfEqualGrantedAndDenied%',
+			],
+			AbstractFileConfiguration::CONFIG_SERVICE_TYPE_KEY => AuthorizationService::class
+		],
 
-        UserTool::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CLASS => UserTool::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'pdo' => '$PDO',
-                'events' => '%security.tools.trigger-events%'
-            ]
-        ],
-        PasswordResetTool::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CLASS => PasswordResetTool::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'events' => '%security.tools.trigger-events%'
-            ]
-        ],
-        UserGroupTool::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CLASS => UserGroupTool::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'pdo' => '$PDO',
-                'events' => '%security.tools.trigger-events%'
-            ]
-        ],
-        UserRoleTool::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CLASS => UserRoleTool::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'pdo' => '$PDO',
-                'events' => '%security.tools.trigger-events%'
-            ]
-        ]
-    ]
+		UserTool::SERVICE_NAME => [
+			AbstractFileConfiguration::SERVICE_CLASS => UserTool::class,
+			AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+				'pdo' => '$PDO',
+				'events' => '%security.tools.trigger-events%'
+			]
+		],
+		PasswordResetTool::SERVICE_NAME => [
+			AbstractFileConfiguration::SERVICE_CLASS => PasswordResetTool::class,
+			AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+				'events' => '%security.tools.trigger-events%'
+			]
+		],
+		UserGroupTool::SERVICE_NAME => [
+			AbstractFileConfiguration::SERVICE_CLASS => UserGroupTool::class,
+			AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+				'pdo' => '$PDO',
+				'events' => '%security.tools.trigger-events%'
+			]
+		],
+		UserRoleTool::SERVICE_NAME => [
+			AbstractFileConfiguration::SERVICE_CLASS => UserRoleTool::class,
+			AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
+				'pdo' => '$PDO',
+				'events' => '%security.tools.trigger-events%'
+			]
+		]
+	]
 ];

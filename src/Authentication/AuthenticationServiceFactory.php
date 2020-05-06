@@ -48,122 +48,134 @@ use TASoft\Service\ServiceManager;
 
 class AuthenticationServiceFactory extends AbstractContainer
 {
-    const AUTHENTICATION_SERVICE = 'authenticationService';
+	const AUTHENTICATION_SERVICE = 'authenticationService';
 
-    const PASSWORD_ENCODERS = 'password-encoders';
-    const ANONYMOUT_USER_ID = 'anonymousUID';
-    const ALLOWS_REMEMBER_ME = 'allowsRememberMe';
-    const USER_PROVIDERS = 'userProviders';
-    const VALIDATORS = 'validators';
+	const PASSWORD_ENCODERS = 'password-encoders';
+	const ANONYMOUT_USER_ID = 'anonymousUID';
+	const ALLOWS_REMEMBER_ME = 'allowsRememberMe';
+	const USER_PROVIDERS = 'userProviders';
+	const VALIDATORS = 'validators';
 
-    const ENABLED_VALIDATORS = 'enabledValidators';
-    const ENABLED_PASSWORD_ENCODERS = 'enabledPasswordEncoders';
+	const ENABLED_VALIDATORS = 'enabledValidators';
+	const ENABLED_PASSWORD_ENCODERS = 'enabledPasswordEncoders';
+	const ENABLED_USER_PROVIDERS = 'enabledUserProviders';
 
-    const VALIDATOR_CLIENT_BRUTE_FORCE = 'client-bf';
-    const VALIDATOR_SERVER_BRUTE_FORCE = 'server-bf';
-    const VALIDATOR_PERMISSION_CHANGED = 'perm-ch';
-    const VALIDATOR_AUTO_LOGOUT = 'auto-lgo';
-    const VALIDATOR_UPDATE_LAST_LOGIN_DATE = 'upd-last-login';
+	const VALIDATOR_CLIENT_BRUTE_FORCE = 'client-bf';
+	const VALIDATOR_SERVER_BRUTE_FORCE = 'server-bf';
+	const VALIDATOR_PERMISSION_CHANGED = 'perm-ch';
+	const VALIDATOR_AUTO_LOGOUT = 'auto-lgo';
+	const VALIDATOR_UPDATE_LAST_LOGIN_DATE = 'upd-last-login';
 
-    const VALIDATOR_INSTALLER_NAME = 'installerName';
+	const VALIDATOR_INSTALLER_NAME = 'installerName';
 
-    private $configuration;
+	const USER_PROVIDER_DATABASE_NAME = 'updb';
+	const USER_PROVIDER_INITIAL_NAME = 'iusp';
 
-    /**
-     * @return mixed
-     */
-    public function getConfiguration()
-    {
-        return $this->configuration;
-    }
+	private $configuration;
 
-    /**
-     * @param mixed $configuration
-     */
-    public function setConfiguration($configuration): void
-    {
-        $this->configuration = $configuration;
-    }
+	/**
+	 * @return mixed
+	 */
+	public function getConfiguration()
+	{
+		return $this->configuration;
+	}
 
-    protected function loadInstance()
-    {
-        $userProviders = $this->getConfiguration()[ static::USER_PROVIDERS ] ?? NULL;
-        if(!$userProviders)
-            throw new InvalidArgumentException("Authentication service requires at least one user provider", 403);
+	/**
+	 * @param mixed $configuration
+	 */
+	public function setConfiguration($configuration): void
+	{
+		$this->configuration = $configuration;
+	}
 
-        $sm = ServiceManager::generalServiceManager();
-        $makeInstance = function($config) use ($sm) {
-            try {
-                $cnt = new ConfiguredServiceContainer("", $config, $sm);
-            } catch (BadConfigurationException $exception) {
-                return NULL;
-            }
-            $s = $cnt->getInstance();
-            unset($cnt);
-            return $s;
-        };
+	protected function loadInstance()
+	{
+		$userProviders = $this->getConfiguration()[ static::USER_PROVIDERS ] ?? [];
+		$enabledUserProviders = $this->getConfiguration()[ static::ENABLED_USER_PROVIDERS ] ?? [];
 
-        if(count($userProviders) > 1) {
-            $userProvider = new ChainUserProvider();
-            foreach ($userProviders as $provider)
-                $userProvider->addProvider( $makeInstance($provider) );
-        } else {
-            foreach($userProviders as $provider) {
-                $userProvider = $makeInstance($provider);
-                break;
-            }
-        }
+		$userProviders = array_filter($userProviders, function($k) use ($enabledUserProviders) {
+			return in_array($k, $enabledUserProviders);
+		}, ARRAY_FILTER_USE_KEY);
 
-        $passwordEncoders = $this->getConfiguration()[static::PASSWORD_ENCODERS] ?? NULL;
-        $enabledPasswordEncoders = $this->getConfiguration()[ static::ENABLED_PASSWORD_ENCODERS ] ?? NULL;
+		if(!$userProviders)
+			throw new InvalidArgumentException("Authentication service requires at least one user provider", 403);
 
-        if(!$enabledPasswordEncoders)
-            throw new InvalidArgumentException("Authentication service requires at least one enabled password encoder", 403);
+		$sm = ServiceManager::generalServiceManager();
+		$makeInstance = function($config) use ($sm) {
+			try {
+				$cnt = new ConfiguredServiceContainer("", $config, $sm);
+			} catch (BadConfigurationException $exception) {
+				return NULL;
+			}
+			$s = $cnt->getInstance();
+			unset($cnt);
+			return $s;
+		};
 
 
-        if(count($enabledPasswordEncoders) > 1) {
-            $passwordEncoder = new PasswordEncoderChain();
-            foreach($enabledPasswordEncoders as $encoderClass) {
-                $encoder = $passwordEncoders[ $encoderClass ] ?? NULL;
-                if(!$encoder)
-                    throw new SecurityException("No password encoder specified for $encoderClass");
 
-                $cnt = new ConfiguredServiceContainer("", $encoder, $sm);
-                $passwordEncoder->addEncoder( $cnt->getInstance() );
-                unset($cnt);
-            }
-        } else {
-            foreach($enabledPasswordEncoders as $encoderClass) {
-                $encoder = $passwordEncoders[ $encoderClass ] ?? NULL;
-                if(!$encoder)
-                    throw new SecurityException("No password encoder specified for $encoderClass");
+		if(count($userProviders) > 1) {
+			$userProvider = new ChainUserProvider();
+			foreach ($userProviders as $provider)
+				$userProvider->addProvider( $makeInstance($provider) );
+		} else {
+			foreach($userProviders as $provider) {
+				$userProvider = $makeInstance($provider);
+				break;
+			}
+		}
 
-                $cnt = new ConfiguredServiceContainer("", $encoder, $sm);
-                $passwordEncoder = $cnt->getInstance();
-                unset($cnt);
-                break;
-            }
-        }
+		$passwordEncoders = $this->getConfiguration()[static::PASSWORD_ENCODERS] ?? NULL;
+		$enabledPasswordEncoders = $this->getConfiguration()[ static::ENABLED_PASSWORD_ENCODERS ] ?? NULL;
 
-        $validators = [];
+		if(!$enabledPasswordEncoders)
+			throw new InvalidArgumentException("Authentication service requires at least one enabled password encoder", 403);
 
-        if($validatorNames = $this->getConfiguration()[static::ENABLED_VALIDATORS] ?? NULL) {
-            foreach($validatorNames as $name) {
-                $info = $this->getConfiguration()[ static::VALIDATORS ] [$name] ?? NULL;
-                if(!$info)
-                    throw new InvalidArgumentException("Can not instantiate validator $name. No definition specified", 403);
-                $cnt = new ConfiguredServiceContainer($name, $info, $sm);
-                $validators[] = $cnt->getInstance();
-            }
-        }
 
-        if($installer = $this->getConfiguration()[static::VALIDATOR_INSTALLER_NAME] ?? NULL) {
-            $installer = $sm->get($installer);
-            if($installer instanceof IdentityInstaller) {
-                $validators[] = $installer;
-            }
-        }
+		if(count($enabledPasswordEncoders) > 1) {
+			$passwordEncoder = new PasswordEncoderChain();
+			foreach($enabledPasswordEncoders as $encoderClass) {
+				$encoder = $passwordEncoders[ $encoderClass ] ?? NULL;
+				if(!$encoder)
+					throw new SecurityException("No password encoder specified for $encoderClass");
 
-        return new AuthenticationService($userProvider, $passwordEncoder, $validators);
-    }
+				$cnt = new ConfiguredServiceContainer("", $encoder, $sm);
+				$passwordEncoder->addEncoder( $cnt->getInstance() );
+				unset($cnt);
+			}
+		} else {
+			foreach($enabledPasswordEncoders as $encoderClass) {
+				$encoder = $passwordEncoders[ $encoderClass ] ?? NULL;
+				if(!$encoder)
+					throw new SecurityException("No password encoder specified for $encoderClass");
+
+				$cnt = new ConfiguredServiceContainer("", $encoder, $sm);
+				$passwordEncoder = $cnt->getInstance();
+				unset($cnt);
+				break;
+			}
+		}
+
+		$validators = [];
+
+		if($validatorNames = $this->getConfiguration()[static::ENABLED_VALIDATORS] ?? NULL) {
+			foreach($validatorNames as $name) {
+				$info = $this->getConfiguration()[ static::VALIDATORS ] [$name] ?? NULL;
+				if(!$info)
+					throw new InvalidArgumentException("Can not instantiate validator $name. No definition specified", 403);
+				$cnt = new ConfiguredServiceContainer($name, $info, $sm);
+				$validators[] = $cnt->getInstance();
+			}
+		}
+
+		if($installer = $this->getConfiguration()[static::VALIDATOR_INSTALLER_NAME] ?? NULL) {
+			$installer = $sm->get($installer);
+			if($installer instanceof IdentityInstaller) {
+				$validators[] = $installer;
+			}
+		}
+
+		return new AuthenticationService($userProvider, $passwordEncoder, $validators);
+	}
 }
