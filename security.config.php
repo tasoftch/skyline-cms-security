@@ -39,7 +39,6 @@ use Skyline\CMS\Security\Challenge\TemplateChallenge;
 use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\CMS\Security\Identity\IdentityInstallerServiceFactory;
 use Skyline\CMS\Security\Identity\IdentityServiceFactory;
-use Skyline\CMS\Security\Tool\AttributeTool;
 use Skyline\CMS\Security\Tool\PasswordResetTool;
 use Skyline\CMS\Security\Tool\UserGroupTool;
 use Skyline\CMS\Security\Tool\UserRoleTool;
@@ -240,7 +239,8 @@ return [
                         AbstractFileConfiguration::SERVICE_CLASS => UpdateLastLoginValidator::class,
                         AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
                             'db_column_name' => 'lastLoginDate',
-                            'min_reliability' => IdentityInterface::RELIABILITY_HTML_FORM
+                            'min_reliability' => IdentityInterface::RELIABILITY_HTML_FORM,
+							'events' => '%security.tools.trigger-events%'
                         ]
                     ]
                 ],
@@ -315,15 +315,6 @@ return [
             AbstractFileConfiguration::SERVICE_CLASS => UserRoleTool::class,
             AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
                 'pdo' => '$PDO',
-                'events' => '%security.tools.trigger-events%'
-            ]
-        ],
-        AttributeTool::SERVICE_NAME => [
-            AbstractFileConfiguration::SERVICE_CLASS => AttributeTool::class,
-            AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-                'pdo' => '$PDO',
-                'boundFileMap' => [
-                ],
                 'events' => '%security.tools.trigger-events%'
             ]
         ]

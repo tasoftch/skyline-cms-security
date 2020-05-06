@@ -40,6 +40,7 @@ use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\CMS\Security\Identity\TemporaryIdentity;
 use Skyline\CMS\Security\SecurityTrait;
 use Skyline\CMS\Security\Tool\Event\UserEvent;
+use Skyline\CMS\Security\UserSystem\Group;
 use Skyline\Kernel\Service\SkylineServiceManager;
 use Skyline\PDO\PDOResourceInterface;
 use Skyline\Security\Identity\IdentityInterface;
@@ -233,25 +234,54 @@ class UserTool extends AbstractSecurityTool
     public function isMember($group): bool {
         if($uid = $this->getUserID()) {
             // $g = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME )->getGroups();
-            if(NULL === $this->userGroupsCache) {
+            if(NULL === $this->userGroupsCache[$uid]) {
 
-                $this->userGroupsCache= [];
+                $this->userGroupsCache[$uid]= [];
                 foreach($this->PDO->select("SELECT
 id
 FROM SKY_GROUP
 JOIN SKY_USER_GROUP ON groupid = id
 WHERE user = $uid") as $record) {
-                    $this->userGroupsCache[] = $record["id"]*1;
+                    $this->userGroupsCache[$uid][] = $record["id"]*1;
                 }
             }
             /** @var UserGroupTool $gt */
             $gt = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME );
             if($g = $gt->getGroup($group)) {
-                return in_array($g->getId(), $this->userGroupsCache) ? true : false;
+                return in_array($g->getId(), $this->userGroupsCache[$uid]) ? true : false;
             }
         }
         return false;
     }
+
+	/**
+	 * Gets a list of all groups the current user is member
+	 *
+	 * @return Group[]|null
+	 */
+    public function getGroups(): ?array {
+    	$gt = ServiceManager::generalServiceManager()->get(UserGroupTool::SERVICE_NAME);
+    	if($gt instanceof UserGroupTool) {
+			if($user = $this->getUser()) {
+				if(method_exists($user, 'getId')) {
+					$uid = $user->getId();
+					fetch:
+					$groups = [];
+
+					foreach($this->PDO->select("SELECT groupid FROM SKY_USER_GROUP WHERE user = $uid") as $record) {
+						if($g = $gt->getGroup( $record['groupid'] ))
+							$groups[$g->getId()] = $g;
+					}
+					return $groups;
+				} else {
+					$uid = $this->PDO->selectFieldValue("SELECT id FROM SKY_USER WHERE username = ?", 'id', [$user->getUsername()]) * 1;
+					if($uid)
+						goto fetch;
+				}
+			}
+		}
+		return NULL;
+	}
 
     /**
      * Returns all roles the user has
@@ -259,11 +289,11 @@ WHERE user = $uid") as $record) {
      */
     public function getUserRoles(): ?array {
         if($user = $this->getUser()) {
-            if(NULL === $this->cachedUserRoles) {
-                $this->cachedUserRoles = array_map(function($r) {if($r instanceof RoleInterface){return$r->getRole();}else{return(string)$r;}}, $user->getRoles());
-                $this->userRoleCache = [];
+            if(NULL === $this->cachedUserRoles[$user->getUsername()]) {
+                $this->cachedUserRoles[$user->getUsername()] = array_map(function($r) {if($r instanceof RoleInterface){return$r->getRole();}else{return(string)$r;}}, $user->getRoles());
+                $this->userRoleCache[$user->getUsername()] = [];
             }
-            return $this->cachedUserRoles;
+            return $this->cachedUserRoles[$user->getUsername()];
         }
         return NULL;
     }
@@ -278,19 +308,19 @@ WHERE user = $uid") as $record) {
         if($user = $this->getUser()) {
             if($role instanceof RoleInterface)
                 $role = $role->getRole();
-            if(!isset($this->userRoleCache[$role])) {
+            if(!isset($this->userRoleCache[$user->getUsername()][$role])) {
                 $roles = $this->getUserRoles();
 
-                $this->userRoleCache[$role] = false;
+                $this->userRoleCache[$user->getUsername()][$role] = false;
                 foreach($roles as $r) {
                     if(stripos($role, $r) === 0) {
-                        $this->userRoleCache[$role] = true;
+                        $this->userRoleCache[$user->getUsername()][$role] = true;
                         break;
                     }
                 }
             }
 
-            return $this->userRoleCache[$role] ? true : false;
+            return $this->userRoleCache[$user->getUsername()][$role] ? true : false;
         }
         return false;
     }
@@ -320,7 +350,7 @@ WHERE user = $uid") as $record) {
                 }
                 return true;
             } else {
-                $roles = preg_replace_callback("/([a-z_\.0-9]+)/i", function($ms) {
+                $roles = preg_replace_callback("/([a-z_.0-9]+)/i", function($ms) {
                     $role = $ms[1];
                     if($this->hasRole($role))
                         return 1;

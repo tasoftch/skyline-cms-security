@@ -34,22 +34,20 @@
 
 namespace Skyline\CMS\Security\Tool;
 
-use Skyline\CMS\Security\Tool\Event\GroupEvent;
 use Skyline\CMS\Security\UserSystem\Group;
-use Skyline\Kernel\Service\SkylineServiceManager;
-use Skyline\Security\Exception\SecurityException;
+use Skyline\Security\Role\RoleInterface;
+use TASoft\Service\ServiceManager;
 use TASoft\Util\PDO;
-use Throwable;
 
 class UserGroupTool extends AbstractSecurityTool
 {
     const SERVICE_NAME = 'groupTool';
     /** @var PDO */
-    private $PDO;
+    protected $PDO;
 
 
-    private $cachedGroups;
-    private $groupNamesMap = [];
+    protected $cachedGroups;
+    protected $groupNamesMap = [];
 
     /**
      * SecurityTool constructor.
@@ -95,111 +93,43 @@ class UserGroupTool extends AbstractSecurityTool
         return $groups[$group] ?? NULL;
     }
 
-    /**
-     * @param Group $group
-     * @param string $internalError
-     * @internal
-     */
-    private function checkGroupIntegrity(Group $group, $internalError = "Group %s is internal and can not be changed") {
-        $rid = $group->getId();
-        $internal = Group::OPTION_INTERNAL;
+	/**
+	 * Gets a list of all user ids which are member of the given group.
+	 * It returns a list with user ids as keys and user names as values
+	 *
+	 * @param $group
+	 * @return int[]|null
+	 */
+	public function getUsers($group): ?array {
+    	if($group = $this->getGroup($group)) {
+    		$gid = $group->getId();
+    		$users = [];
+    		foreach($this->PDO->select("SELECT id, username FROM SKY_USER_GROUP JOIN SKY_USER ON id = user WHERE groupid = $gid ORDER BY username") as $record) {
+				$users[ $record['id'] ] = $record['username'];
+			}
+    		return $users;
+		}
+    	return NULL;
+	}
 
-        $result = $this->PDO->selectOne("SELECT CASE WHEN options & $internal > 0 THEN 1 ELSE 0 END AS internal FROM SKY_GROUP WHERE id = $rid")["internal"] ?? -1;
-        if($result == -1)
-            throw new SecurityException("No group %s in data base yet", 55, NULL, $group->getName());
-        if($result == 1)
-            throw new SecurityException($internalError, 56, NULL, $group->getName());
-    }
-
-    /**
-     * @param string $name
-     * @param string|NULL $description
-     * @param int $options
-     * @return Group
-     * @throws SecurityException
-     */
-    public function addGroup(string $name, string $description = NULL, int $options = 0): Group {
-        if($this->PDO->selectOne("SELECT id FROM SKY_GROUP where name = ?", [$name])["id"] ?? false) {
-            throw new SecurityException("Group $name already exists");
-        }
-
-        $this->PDO->inject("INSERT INTO SKY_GROUP (name, description, options) VALUES (?, ?, ?)")->send([
-            $name,
-            $description,
-            $options
-        ]);
-        $id = $this->PDO->lastInsertId("SKY_GROUP");
-
-        $this->cachedGroups[ $id ] = $g = new Group([
-            'id' => $id,
-            'name' => $name,
-            'description' => $description,
-            'options' => $options
-        ]);
-        $this->groupNamesMap[ strtolower($name) ] = $id;
-
-        if(!$this->disableEvents) {
-            $e = new GroupEvent();
-            $e->setGroup($g);
-            SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_GROUP_ADD, $e, $g);
-        }
-
-        return $g;
-    }
-
-    public function updateGroup(Group $group, string $name = NULL, string $description = NULL, int $options = NULL) {
-        $this->checkGroupIntegrity($group);
-
-        if(count($this->PDO->selectOne("SELECT id FROM SKY_GROUP where name = ?", [$name])) > 0) {
-            throw new SecurityException("Group $name already exists", 20);
-        }
-
-        $gid = $group->getId();
-
-        $nam = $this->PDO->quote($name);
-        $des = $this->PDO->quote($description);
-
-        $list = [];
-        if(NULL !== $name)
-            $list[] = "name=$nam";
-        if(NULL !== $description)
-            $list[] = "description=$des";
-        if(NULL !== $options)
-            $list[] = "options=$options";
-        if($list) {
-            $list = implode(",", $list);
-            $this->PDO->exec("UPDATE SKY_GROUP SET $list WHERE id = $gid");
-        }
-
-        if(!$this->disableEvents) {
-            $e = new GroupEvent();
-            $e->setGroup($group);
-            SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_GROUP_UPDATE, $e, $group);
-        }
-    }
-
-    public function removeGroup($group) {
-        $group = $this->getGroup($group);
-        $this->checkGroupIntegrity($group);
-
-        if(!$this->disableEvents) {
-            $ev = new GroupEvent();
-            $ev->setGroup($group);
-            SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_GROUP_REMOVE, $ev, $group);
-        }
-
-        try {
-            $rid = $group->getId();
-
-            $this->PDO->transaction(function() use ($rid) {
-                $this->PDO->exec("DELETE FROM SKY_GROUP_ROLE WHERE groupid = $rid");
-                $this->PDO->exec("DELETE FROM SKY_USER_GROUP WHERE groupid = $rid");
-                $this->PDO->exec("DELETE FROM SKY_GROUP WHERE id = $rid");
-            });
-        } catch (Throwable $exception) {
-            trigger_error($exception->getMessage(), E_USER_WARNING);
-            return false;
-        }
-        return true;
-    }
+	/**
+	 * Gets all roles assigned to a given group
+	 *
+	 * @param int|string|Group $group
+	 * @return RoleInterface[]|null
+	 */
+	public function getRoles($group): ?array {
+    	if($group = $this->getGroup($group)) {
+    		$rt = ServiceManager::generalServiceManager()->get(UserRoleTool::SERVICE_NAME);
+    		if($rt instanceof UserRoleTool) {
+    			$roles = [];
+    			foreach($this->PDO->select("SELECT role FROM SKY_GROUP_ROLE WHERE groupid = ?", [$group->getId()]) as $record) {
+    				if($r = $rt->getRole($record["role"]))
+    					$roles[$r->getId()] = $r;
+				}
+    			return $roles;
+			}
+		}
+    	return NULL;
+	}
 }
