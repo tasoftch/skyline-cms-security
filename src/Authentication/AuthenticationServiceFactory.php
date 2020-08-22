@@ -41,6 +41,7 @@ use Skyline\Security\Authentication\AuthenticationService;
 use Skyline\Security\Encoder\PasswordEncoderChain;
 use Skyline\Security\Exception\SecurityException;
 use Skyline\Security\User\Provider\ChainUserProvider;
+use TASoft\Collection\AbstractCollection;
 use TASoft\Service\Container\AbstractContainer;
 use TASoft\Service\Container\ConfiguredServiceContainer;
 use TASoft\Service\Exception\BadConfigurationException;
@@ -91,8 +92,15 @@ class AuthenticationServiceFactory extends AbstractContainer
 
 	protected function loadInstance()
 	{
-		$userProviders = $this->getConfiguration()[ static::USER_PROVIDERS ] ?? [];
-		$enabledUserProviders = $this->getConfiguration()[ static::ENABLED_USER_PROVIDERS ] ?? [];
+		$allProviders = $this->getConfiguration()[ static::USER_PROVIDERS ] ?? [];
+		$enabledUserProviders = AbstractCollection::makeArray( $this->getConfiguration()[ static::ENABLED_USER_PROVIDERS ] ?? []);
+
+		$userProviders = [];
+		foreach($allProviders as $name => $provider) {
+			if(in_array($name, $enabledUserProviders))
+				$userProviders[] = $provider;
+		}
+
 
 		$userProviders = array_filter($userProviders, function($k) use ($enabledUserProviders) {
 			return in_array($k, $enabledUserProviders);
