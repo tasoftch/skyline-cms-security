@@ -289,7 +289,7 @@ WHERE user = $uid") as $record) {
      */
     public function getUserRoles(): ?array {
         if($user = $this->getUser()) {
-            if(NULL === $this->cachedUserRoles[$user->getUsername()]) {
+			if(!isset($this->cachedUserRoles[$user->getUsername()]) || NULL === $this->cachedUserRoles[$user->getUsername()]) {
                 $this->cachedUserRoles[$user->getUsername()] = array_map(function($r) {if($r instanceof RoleInterface){return$r->getRole();}else{return(string)$r;}}, $user->getRoles());
                 $this->userRoleCache[$user->getUsername()] = [];
             }

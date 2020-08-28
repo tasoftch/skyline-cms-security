@@ -40,6 +40,7 @@ use Skyline\CMS\Security\Identity\IdentityInstaller;
 use Skyline\CMS\Security\Identity\IdentityInstallerServiceFactory;
 use Skyline\CMS\Security\Identity\IdentityServiceFactory;
 use Skyline\CMS\Security\Tool\PasswordResetTool;
+use Skyline\CMS\Security\Tool\RootUserTool;
 use Skyline\CMS\Security\Tool\UserGroupTool;
 use Skyline\CMS\Security\Tool\UserRoleTool;
 use Skyline\CMS\Security\Tool\UserTool;
@@ -310,6 +311,8 @@ return [
 		],
 
 		UserTool::SERVICE_NAME => [
+			// Switch the service classby uncommenting it to allow root access to your application.
+			// AbstractFileConfiguration::SERVICE_CLASS => RootUserTool::class,
 			AbstractFileConfiguration::SERVICE_CLASS => UserTool::class,
 			AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
 				'pdo' => '$PDO',
