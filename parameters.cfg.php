@@ -39,7 +39,7 @@ use Skyline\Security\Identity\Provider\Session\SessionIdentityProvider;
 return [
     // Security persistence is required to store security values like request counts, auto-logout and so on.
     // You may set a filename or a PDO object.
-    'security.persistence' => '$(C)/security.persistent.sqlite',
+    'security.persistence' => '$(U)/security.persistent.sqlite',
 
     // Dynamically create a unique application provider string
     'security.session.provider' => md5(__FILE__),
