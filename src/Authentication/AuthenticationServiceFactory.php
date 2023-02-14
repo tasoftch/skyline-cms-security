@@ -101,11 +101,6 @@ class AuthenticationServiceFactory extends AbstractContainer
 				$userProviders[] = $provider;
 		}
 
-
-		$userProviders = array_filter($userProviders, function($k) use ($enabledUserProviders) {
-			return in_array($k, $enabledUserProviders);
-		}, ARRAY_FILTER_USE_KEY);
-
 		if(!$userProviders)
 			throw new InvalidArgumentException("Authentication service requires at least one user provider", 403);
 
