@@ -76,9 +76,9 @@ class UserTool extends AbstractSecurityTool
     /** @var PDO */
     private $PDO;
 
-    private $cachedUserRoles;
-    private $userRoleCache;
-    private $userGroupsCache;
+    private $cachedUserRoles = [];
+    private $userRoleCache = [];
+    private $userGroupsCache = [];
 
     /**
      * SecurityTool constructor.
