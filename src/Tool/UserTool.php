@@ -43,6 +43,9 @@ use Skyline\CMS\Security\Tool\Event\UserEvent;
 use Skyline\CMS\Security\UserSystem\Group;
 use Skyline\Kernel\Service\SkylineServiceManager;
 use Skyline\PDO\PDOResourceInterface;
+use Skyline\Security\Exception\Auth\NoIdentityException;
+use Skyline\Security\Exception\Auth\WrongPasswordException;
+use Skyline\Security\Exception\SecurityException;
 use Skyline\Security\Identity\IdentityInterface;
 use Skyline\Security\Identity\IdentityService;
 use Skyline\Security\Identity\SessionIdentity;
@@ -57,211 +60,211 @@ use TASoft\Util\PDO;
  */
 class UserTool extends AbstractSecurityTool
 {
-    const SERVICE_NAME = 'userTool';
-    use SecurityTrait {
-        hasIdentity as public;
-        getIdentity as public;
-        requireIdentity as public;
+	const SERVICE_NAME = 'userTool';
+	use SecurityTrait {
+		hasIdentity as public;
+		getIdentity as public;
+		requireIdentity as public;
 
-        hasUser as public;
-        getUser as public;
-        requireUser as public;
+		hasUser as public;
+		getUser as public;
+		requireUser as public;
 
-        getIdentityService as public;
-        getAuthenticationService as public;
-        getAuthorizationService as public;
-        getChallengeManager as public;
-    }
+		getIdentityService as public;
+		getAuthenticationService as public;
+		getAuthorizationService as public;
+		getChallengeManager as public;
+	}
 
-    /** @var PDO */
-    private $PDO;
+	/** @var PDO */
+	private $PDO;
 
-    private $cachedUserRoles = [];
-    private $userRoleCache = [];
-    private $userGroupsCache = [];
+	private $cachedUserRoles = [];
+	private $userRoleCache = [];
+	private $userGroupsCache = [];
 
-    /**
-     * SecurityTool constructor.
-     * @param $PDO
-     * @param $withEvents
-     */
-    public function __construct($PDO, $withEvents = true)
-    {
-        $this->PDO = $PDO;
-        if(!$withEvents)
-            $this->disableEvents();
-    }
+	/**
+	 * SecurityTool constructor.
+	 * @param $PDO
+	 * @param $withEvents
+	 */
+	public function __construct($PDO, $withEvents = true)
+	{
+		$this->PDO = $PDO;
+		if(!$withEvents)
+			$this->disableEvents();
+	}
 
-    /**
-     * @return PDO
-     */
-    public function getPDO(): PDO
-    {
-        return $this->PDO;
-    }
-
-
-    /**
-     * Gets the user name
-     *
-     * @return string
-     */
-    public function getUserName() {
-        if($u = $this->getUser())
-            return $u->getUsername();
-        return "";
-    }
-
-    /**
-     * Tries to get a readable full user name
-     *
-     * @return string
-     */
-    public function getFullUserName() {
-        if($u = $this->getUser()) {
-            if(method_exists($u, 'getFullName'))
-                return $u->getFullName();
-            return $this->getUserName();
-        }
-        return "";
-    }
-
-    /**
-     * @return int
-     */
-    public function getUserID(): int {
-        if($user = $this->getUser()) {
-            if($user instanceof PDOResourceInterface)
-                return $user->getID();
-            else
-                return $this->PDO->selectFieldValue("SELECT id FROM SKY_USER WHERE username = ? LIMIT 1", 'id', [$user->getUsername()]) * 1;
-        }
-        return -1;
-    }
-
-    /**
-     * This method checks if anyhow a user can be fetched from Skyline given an id, username or email address
-     *
-     * @param string|int $user
-     * @return bool
-     */
-    public function exists($user): bool {
-        $c = $this->getPDO()->selectFieldValue("SELECT count(id) AS c FROM SKY_USER WHERE id = :user OR username = :user OR ((options & 8) = 8 AND email = :user)", 'c', ['user' => $user]);
-        return $c > 0 ? true : false;
-    }
-
-    /**
-     * Checks, if a username exists.
-     *
-     * @param string $username
-     * @return bool
-     */
-    public function existsUsername(string $username): bool {
-        $c = $this->getPDO()->selectFieldValue("SELECT count(id) AS c FROM SKY_USER WHERE username = :user", 'c', ['user' => $username]);
-        return $c > 0 ? true : false;
-    }
-
-    /**
-     * Checks, if an email address exists.
-     *
-     * @param string $email
-     * @return bool
-     */
-    public function existsEmail(string $email): bool {
-        $c = $this->getPDO()->selectFieldValue("SELECT count(id) AS c FROM SKY_USER WHERE email = :user", 'c', ['user' => $email]);
-        return $c > 0 ? true : false;
-    }
+	/**
+	 * @return PDO
+	 */
+	public function getPDO(): PDO
+	{
+		return $this->PDO;
+	}
 
 
-    /**
-     * Performs a logout for a given identity or the current logged user's identity
-     * IMPORTANT: Always use this method for logout in your application to ensure further version compatibility with Skyline CMS.
-     *
-     * @param IdentityInterface|NULL $identity
-     * @return bool
-     */
-    public function logoutIdentity(IdentityInterface $identity = NULL): bool {
-        if(!$identity)
-            $identity = $this->getIdentity();
+	/**
+	 * Gets the user name
+	 *
+	 * @return string
+	 */
+	public function getUserName() {
+		if($u = $this->getUser())
+			return $u->getUsername();
+		return "";
+	}
 
-        if($identity) {
-            /** @var IdentityInstaller $installer */
-            $installer = ServiceManager::generalServiceManager()->get( IdentityInstaller::SERVICE_NAME );
+	/**
+	 * Tries to get a readable full user name
+	 *
+	 * @return string
+	 */
+	public function getFullUserName() {
+		if($u = $this->getUser()) {
+			if(method_exists($u, 'getFullName'))
+				return $u->getFullName();
+			return $this->getUserName();
+		}
+		return "";
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getUserID(): int {
+		if($user = $this->getUser()) {
+			if($user instanceof PDOResourceInterface)
+				return $user->getID();
+			else
+				return $this->PDO->selectFieldValue("SELECT id FROM SKY_USER WHERE username = ? LIMIT 1", 'id', [$user->getUsername()]) * 1;
+		}
+		return -1;
+	}
+
+	/**
+	 * This method checks if anyhow a user can be fetched from Skyline given an id, username or email address
+	 *
+	 * @param string|int $user
+	 * @return bool
+	 */
+	public function exists($user): bool {
+		$c = $this->getPDO()->selectFieldValue("SELECT count(id) AS c FROM SKY_USER WHERE id = :user OR username = :user OR ((options & 8) = 8 AND email = :user)", 'c', ['user' => $user]);
+		return $c > 0 ? true : false;
+	}
+
+	/**
+	 * Checks, if a username exists.
+	 *
+	 * @param string $username
+	 * @return bool
+	 */
+	public function existsUsername(string $username): bool {
+		$c = $this->getPDO()->selectFieldValue("SELECT count(id) AS c FROM SKY_USER WHERE username = :user", 'c', ['user' => $username]);
+		return $c > 0 ? true : false;
+	}
+
+	/**
+	 * Checks, if an email address exists.
+	 *
+	 * @param string $email
+	 * @return bool
+	 */
+	public function existsEmail(string $email): bool {
+		$c = $this->getPDO()->selectFieldValue("SELECT count(id) AS c FROM SKY_USER WHERE email = :user", 'c', ['user' => $email]);
+		return $c > 0 ? true : false;
+	}
 
 
-            /** @var Response $response */
-            $response = ServiceManager::generalServiceManager()->get("response");
+	/**
+	 * Performs a logout for a given identity or the current logged user's identity
+	 * IMPORTANT: Always use this method for logout in your application to ensure further version compatibility with Skyline CMS.
+	 *
+	 * @param IdentityInterface|NULL $identity
+	 * @return bool
+	 */
+	public function logoutIdentity(IdentityInterface $identity = NULL): bool {
+		if(!$identity)
+			$identity = $this->getIdentity();
 
-            $done = true;
-            foreach($installer->getReachableProviders() as $provider) {
-                if(!$provider->uninstallIdentity($identity, $response))
-                    $done = false;
-            }
+		if($identity) {
+			/** @var IdentityInstaller $installer */
+			$installer = ServiceManager::generalServiceManager()->get( IdentityInstaller::SERVICE_NAME );
 
-            if(!$this->disableEvents) {
-                $e = new UserEvent();
-                $e->setUser($identity);
-                SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_LOGOUT, $e, $identity, $installer);
-            }
 
-            return $done;
-        }
-        return false;
-    }
+			/** @var Response $response */
+			$response = ServiceManager::generalServiceManager()->get("response");
 
-    /**
-     * Checks, if a remember me identity exists.
-     *
-     * @return bool
-     */
-    public function hasRememberMeIdentity(): bool {
-        /** @var IdentityService $is */
-        $is = $this->getIdentityService();
+			$done = true;
+			foreach($installer->getReachableProviders() as $provider) {
+				if(!$provider->uninstallIdentity($identity, $response))
+					$done = false;
+			}
 
-        foreach($is->yieldIdentities($this->getRequest()) as $identity) {
-            if($identity instanceof SessionIdentity && $identity->isRememberMe())
-                return true;
-        }
-        return false;
-    }
+			if(!$this->disableEvents) {
+				$e = new UserEvent();
+				$e->setUser($identity);
+				SkylineServiceManager::getEventManager()->trigger(SKY_EVENT_USER_LOGOUT, $e, $identity, $installer);
+			}
 
-    /**
-     * Checks, if the logged user is member of a given group
-     *
-     * @param int|string $group  A group name or group id
-     * @return bool
-     */
-    public function isMember($group): bool {
-        if($uid = $this->getUserID()) {
-            // $g = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME )->getGroups();
-            if(NULL === $this->userGroupsCache[$uid]) {
+			return $done;
+		}
+		return false;
+	}
 
-                $this->userGroupsCache[$uid]= [];
-                foreach($this->PDO->select("SELECT
+	/**
+	 * Checks, if a remember me identity exists.
+	 *
+	 * @return bool
+	 */
+	public function hasRememberMeIdentity(): bool {
+		/** @var IdentityService $is */
+		$is = $this->getIdentityService();
+
+		foreach($is->yieldIdentities($this->getRequest()) as $identity) {
+			if($identity instanceof SessionIdentity && $identity->isRememberMe())
+				return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Checks, if the logged user is member of a given group
+	 *
+	 * @param int|string $group  A group name or group id
+	 * @return bool
+	 */
+	public function isMember($group): bool {
+		if($uid = $this->getUserID()) {
+			// $g = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME )->getGroups();
+			if(NULL === ($this->userGroupsCache[$uid] ?? NULL)) {
+
+				$this->userGroupsCache[$uid]= [];
+				foreach($this->PDO->select("SELECT
 id
 FROM SKY_GROUP
 JOIN SKY_USER_GROUP ON groupid = id
 WHERE user = $uid") as $record) {
-                    $this->userGroupsCache[$uid][] = $record["id"]*1;
-                }
-            }
-            /** @var UserGroupTool $gt */
-            $gt = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME );
-            if($g = $gt->getGroup($group)) {
-                return in_array($g->getId(), $this->userGroupsCache[$uid]) ? true : false;
-            }
-        }
-        return false;
-    }
+					$this->userGroupsCache[$uid][] = $record["id"]*1;
+				}
+			}
+			/** @var UserGroupTool $gt */
+			$gt = ServiceManager::generalServiceManager()->get( UserGroupTool::SERVICE_NAME );
+			if($g = $gt->getGroup($group)) {
+				return in_array($g->getId(), $this->userGroupsCache[$uid]) ? true : false;
+			}
+		}
+		return false;
+	}
 
 	/**
 	 * Gets a list of all groups the current user is member
 	 *
 	 * @return Group[]|null
 	 */
-    public function getGroups(): ?array {
-    	$gt = ServiceManager::generalServiceManager()->get(UserGroupTool::SERVICE_NAME);
-    	if($gt instanceof UserGroupTool) {
+	public function getGroups(): ?array {
+		$gt = ServiceManager::generalServiceManager()->get(UserGroupTool::SERVICE_NAME);
+		if($gt instanceof UserGroupTool) {
 			if($user = $this->getUser()) {
 				if(method_exists($user, 'getId')) {
 					$uid = $user->getId();
@@ -283,113 +286,143 @@ WHERE user = $uid") as $record) {
 		return NULL;
 	}
 
-    /**
-     * Returns all roles the user has
-     * @return array|null       The roles as strings
-     */
-    public function getUserRoles(): ?array {
-        if($user = $this->getUser()) {
+	/**
+	 * Returns all roles the user has
+	 * @return array|null       The roles as strings
+	 */
+	public function getUserRoles(): ?array {
+		if($user = $this->getUser()) {
 			if(!isset($this->cachedUserRoles[$user->getUsername()]) || NULL === $this->cachedUserRoles[$user->getUsername()]) {
-                $this->cachedUserRoles[$user->getUsername()] = array_map(function($r) {if($r instanceof RoleInterface){return$r->getRole();}else{return(string)$r;}}, $user->getRoles());
-                $this->userRoleCache[$user->getUsername()] = [];
-            }
-            return $this->cachedUserRoles[$user->getUsername()];
-        }
-        return NULL;
-    }
+				$this->cachedUserRoles[$user->getUsername()] = array_map(function($r) {if($r instanceof RoleInterface){return$r->getRole();}else{return(string)$r;}}, $user->getRoles());
+				$this->userRoleCache[$user->getUsername()] = [];
+			}
+			return $this->cachedUserRoles[$user->getUsername()];
+		}
+		return NULL;
+	}
 
-    /**
-     * Checks, if the current logged user has one specific role
-     *
-     * @param string|RoleInterface $role
-     * @return bool
-     */
-    public function hasRole($role): bool {
-        if($user = $this->getUser()) {
-            if($role instanceof RoleInterface)
-                $role = $role->getRole();
-            if(!isset($this->userRoleCache[$user->getUsername()][$role])) {
-                $roles = $this->getUserRoles();
+	/**
+	 * Checks, if the current logged user has one specific role
+	 *
+	 * @param string|RoleInterface $role
+	 * @return bool
+	 */
+	public function hasRole($role): bool {
+		if($user = $this->getUser()) {
+			if($role instanceof RoleInterface)
+				$role = $role->getRole();
+			if(!isset($this->userRoleCache[$user->getUsername()][$role])) {
+				$roles = $this->getUserRoles();
 
-                $this->userRoleCache[$user->getUsername()][$role] = false;
-                foreach($roles as $r) {
-                    if(stripos($role, $r) === 0) {
-                        $this->userRoleCache[$user->getUsername()][$role] = true;
-                        break;
-                    }
-                }
-            }
+				$this->userRoleCache[$user->getUsername()][$role] = false;
+				foreach($roles as $r) {
+					if(stripos($role, $r) === 0) {
+						$this->userRoleCache[$user->getUsername()][$role] = true;
+						break;
+					}
+				}
+			}
 
-            return $this->userRoleCache[$user->getUsername()][$role] ? true : false;
-        }
-        return false;
-    }
+			return $this->userRoleCache[$user->getUsername()][$role] ? true : false;
+		}
+		return false;
+	}
 
-    /**
-     * Checks, if the current logged user has the required roles.
-     * You may pass an array with role names, so the user must have all given roles or
-     * a string in the following format
-     *
-     * The symbol && combines two roles as AND, so the user must have both roles
-     * The symbol || combines two roles as OR, so the user must have at least one of the two roles
-     *
-     *
-     *  "ROLE.1 && ROLE.2"              => true, if the user has ROLE.1 and ROLE.2
-     *  "ROLE.1 || ROLE.2"              => true, if the user has ROLE.1 or ROLE.2
-     *  "(ROLE.1 || ROLE.2) && ROLE.3"  => true, if the user has ROLE.1 or ROLE.2, and if so then has ROLE.3
-     *
-     * @param string|iterable $roles
-     * @return bool
-     */
-    public function hasRoles($roles): bool {
-        if($user = $this->getUser()) {
-            if(is_iterable($roles)) {
-                foreach($roles as $role) {
-                    if(!$this->hasRole($role))
-                        return false;
-                }
-                return true;
-            } else {
-                $roles = preg_replace_callback("/([a-z_.0-9]+)/i", function($ms) {
-                    $role = $ms[1];
-                    if($this->hasRole($role))
-                        return 1;
-                    return 0;
-                }, $roles);
-                return eval("return $roles;") ? true : false;
-            }
-        }
-        return false;
-    }
+	/**
+	 * Checks, if the current logged user has the required roles.
+	 * You may pass an array with role names, so the user must have all given roles or
+	 * a string in the following format
+	 *
+	 * The symbol && combines two roles as AND, so the user must have both roles
+	 * The symbol || combines two roles as OR, so the user must have at least one of the two roles
+	 *
+	 *
+	 *  "ROLE.1 && ROLE.2"              => true, if the user has ROLE.1 and ROLE.2
+	 *  "ROLE.1 || ROLE.2"              => true, if the user has ROLE.1 or ROLE.2
+	 *  "(ROLE.1 || ROLE.2) && ROLE.3"  => true, if the user has ROLE.1 or ROLE.2, and if so then has ROLE.3
+	 *
+	 * @param string|iterable $roles
+	 * @return bool
+	 */
+	public function hasRoles($roles): bool {
+		if($user = $this->getUser()) {
+			if(is_iterable($roles)) {
+				foreach($roles as $role) {
+					if(!$this->hasRole($role))
+						return false;
+				}
+				return true;
+			} else {
+				$roles = preg_replace_callback("/([a-z_.0-9]+)/i", function($ms) {
+					$role = $ms[1];
+					if($this->hasRole($role))
+						return 1;
+					return 0;
+				}, $roles);
+				return eval("return $roles;") ? true : false;
+			}
+		}
+		return false;
+	}
 
-    /**
-     * This method creates a new account request.
-     * It is designed to verify an email address before creating an account.
-     * Pack all necessary information into the request (as attributes) and pass it to this method.
-     * It will create an URL safe string that can be transmitted by
-     *
-     * @param string $username
-     * @param string $email
-     * @param string $secure
-     * @param array $attributes
-     * @param int $ttl
-     * @return string
-     * @throws \Exception
-     */
-    public function makeAccountRequest(string $username, string $email, string $secure, array $attributes = [], int $ttl = 60): string {
-        $key = hash( 'sha256', 'skyline-user-tool-account-request-token' );
-        $iv = substr( hash( 'sha256', $secure  ), 0, 16 );
+	/**
+	 * For temporary increasing reliability you may ask a user to enter the password.
+	 * This password may be confirmed using this method.
+	 *
+	 * @param string $credential
+	 * @param bool $silent
+	 * @return bool
+	 */
+	public function verifyCredentials(string $credential, bool $silent = false): bool {
+		$as = $this->getAuthenticationService();
+		if(method_exists($as, 'getPasswordEncoder')) {
+			$encoder = $as->getPasswordEncoder();
+			if(!$this->hasIdentity()) {
+				if(!$silent)
+					throw new NoIdentityException("No current identity registered", 403);
+				return false;
+			}
+			$identity = $this->getIdentity();
+			$user = $this->getUser();
 
-        $date = new DateTime("now +{$ttl}seconds");
+			if(!$encoder->isPasswordValid( $user->getCredentials(), $credential, $identity->getOptions() )) {
+				if(!$silent)
+					throw new WrongPasswordException("Password is not correct", 401);
+				return false;
+			}
+		} elseif(!$silent)
+			throw new SecurityException("Can not obtain password encoder", 403);
+		return false;
+	}
 
-        return urlencode( base64_encode( openssl_encrypt( serialize([
-            'acct',
-            $username,
-            $email,
-            $attributes,
-            $date->format("Y-m-d G:i:s")
-        ]), "AES-256-CBC", $key, 0, $iv ) ) );
-    }
+	/**
+	 * This method creates a new account request.
+	 * It is designed to verify an email address before creating an account.
+	 * Pack all necessary information into the request (as attributes) and pass it to this method.
+	 * It will create an URL safe string that can be transmitted by
+	 *
+	 * @param string $username
+	 * @param string $email
+	 * @param string $secure
+	 * @param array $attributes
+	 * @param int $ttl
+	 * @return string
+	 * @throws \Exception
+	 */
+	public function makeAccountRequest(string $username, string $email, string $secure, array $attributes = [], int $ttl = 60): string {
+		$key = hash( 'sha256', 'skyline-user-tool-account-request-token' );
+		$iv = substr( hash( 'sha256', $secure  ), 0, 16 );
+
+		$date = new DateTime("now +{$ttl}seconds");
+
+		return urlencode( base64_encode( openssl_encrypt( serialize([
+			'acct',
+			$username,
+			$email,
+			$attributes,
+			$date->format("Y-m-d G:i:s")
+		]), "AES-256-CBC", $key, 0, $iv ) ) );
+	}
 
     /**
      * Decodes an account request
