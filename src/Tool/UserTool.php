@@ -540,6 +540,8 @@ WHERE user = $uid") as $record) {
 	 *
 	 * Once the user is marked, the UserProvider needs to adapt the roles.
 	 *
+	 * The new login will pretend to be the adapted user with all attributes except username and credentials
+	 *
 	 * The SQL table SKY_USER must have a field named `adapt_roles_from` with integer type.
 	 *
 	 * @param UserInterface|int|string|null $user
