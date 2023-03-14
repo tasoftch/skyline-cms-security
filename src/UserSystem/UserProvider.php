@@ -93,11 +93,19 @@ class UserProvider implements UserProviderInterface, UserProviderAwareInterface,
         ]);
 
         if($user) {
-            $roles = [];
-            $uid = $user["id"];
+			$roles = [];
+
 			if($this->canAdaptRoles && isset($user["adapt_roles_from"]) && $user["adapt_roles_from"]) {
 				$uid = $user["adapt_roles_from"] * 1;
+
+				$adapted = $this->PDO->selectOne("SELECT * FROM SKY_USER WHERE id = $uid");
+				$adapted["username"] = $user["username"];
+				$adapted["credentials"] = $user["credentials"];
+
+				$user = $adapted;
 			}
+
+			$uid = $user["id"];
 
             /** @var UserRoleTool $rTool */
             $rTool = ServiceManager::generalServiceManager()->get(UserRoleTool::SERVICE_NAME);

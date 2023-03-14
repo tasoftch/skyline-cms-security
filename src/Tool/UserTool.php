@@ -562,7 +562,7 @@ WHERE user = $uid") as $record) {
 				$ID = $this->PDO->selectFieldValue("SELECT id FROM SKY_USER WHERE id = :token OR username = :token", 'id', ['token' => $user]);
 
 				if($ID) {
-					$this->PDO->exec("UPDATE SKY_USER SET adapt_roles_from $ID WHERE username = $usrName");
+					$this->PDO->exec("UPDATE SKY_USER SET adapt_roles_from = $ID WHERE username = $usrName");
 					return true;
 				}
 			}
