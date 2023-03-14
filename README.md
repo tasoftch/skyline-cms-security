@@ -1,6 +1,6 @@
 # Skyline CMS Security
 Install this package to apply the ``` skyline/security ``` package easy into your application.  
-It ships with a preconfiguration that you can easy adjust to your requirements.
+It ships with a preconfiguration that you can easily adjust to your requirements.
 
 ### Compiler annotations
 This package extends your application compilation by another annotation compiler.   
@@ -38,7 +38,7 @@ This annotations are available:
 - ````@group <string>```` (multiple allowed, if one matches, condition is fulfilled)  
     Requires, that the authenticated user is member of specific group
 
-**Authozization**
+**Authorization**
 - ```@role <string>``` (multiple allowed, if all match, condition is fulfilled)  
     Requires, that the authenticated user has a specific role
     

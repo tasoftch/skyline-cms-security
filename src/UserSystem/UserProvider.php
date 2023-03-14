@@ -47,14 +47,17 @@ class UserProvider implements UserProviderInterface, UserProviderAwareInterface,
 {
     /** @var PDO */
     private $PDO;
+	/** @var bool  */
+	private $canAdaptRoles;
 
     /**
      * UserProvider constructor.
      * @param PDO $PDO
      */
-    public function __construct(PDO $PDO)
+    public function __construct(PDO $PDO, bool $canAdaptRoles = false)
     {
         $this->PDO = $PDO;
+		$this->canAdaptRoles = $canAdaptRoles;
     }
 
 
@@ -92,6 +95,9 @@ class UserProvider implements UserProviderInterface, UserProviderAwareInterface,
         if($user) {
             $roles = [];
             $uid = $user["id"];
+			if($this->canAdaptRoles && isset($user["adapt_roles_from"]) && $user["adapt_roles_from"]) {
+				$uid = $user["adapt_roles_from"] * 1;
+			}
 
             /** @var UserRoleTool $rTool */
             $rTool = ServiceManager::generalServiceManager()->get(UserRoleTool::SERVICE_NAME);

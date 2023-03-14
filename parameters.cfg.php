@@ -138,6 +138,7 @@ return [
     "security.allows-remember-me" => false,
     'security.allows-password-reset' => true,
     'security.allows-new-membership' => false,
+	'security.db-user.can-adapt-roles' => false,
 
     // Authorization
     'security.authorization.strategy' => AbstractAuthorizationService::STRATEGY_AFFIRMATIVE,

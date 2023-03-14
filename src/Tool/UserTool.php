@@ -41,6 +41,7 @@ use Skyline\CMS\Security\Identity\TemporaryIdentity;
 use Skyline\CMS\Security\SecurityTrait;
 use Skyline\CMS\Security\Tool\Event\UserEvent;
 use Skyline\CMS\Security\UserSystem\Group;
+use Skyline\CMS\Security\UserSystem\UserProvider;
 use Skyline\Kernel\Service\SkylineServiceManager;
 use Skyline\PDO\PDOResourceInterface;
 use Skyline\Security\Exception\Auth\NoIdentityException;
@@ -50,6 +51,7 @@ use Skyline\Security\Identity\IdentityInterface;
 use Skyline\Security\Identity\IdentityService;
 use Skyline\Security\Identity\SessionIdentity;
 use Skyline\Security\Role\RoleInterface;
+use Skyline\Security\User\UserInterface;
 use Symfony\Component\HttpFoundation\Response;
 use TASoft\Service\ServiceManager;
 use TASoft\Util\PDO;
@@ -390,6 +392,7 @@ WHERE user = $uid") as $record) {
 					throw new WrongPasswordException("Password is not correct", 401);
 				return false;
 			}
+			return true;
 		} elseif(!$silent)
 			throw new SecurityException("Can not obtain password encoder", 403);
 		return false;
@@ -530,4 +533,38 @@ WHERE user = $uid") as $record) {
 
         throw new InvalidIdentityTokenException("Invalid token. Could not decode", 19029);
     }
+
+	/**
+	 * This is an experimental function!
+	 * It will mark the current logged user to adapt another users role set, next time on authentication.
+	 *
+	 * Once the user is marked, the UserProvider needs to adapt the roles.
+	 *
+	 * The SQL table SKY_USER must have a field named `adapt_roles_from` with integer type.
+	 *
+	 * @param UserInterface|int|string|null $user
+	 * @return bool
+	 * @see UserProvider
+	 */
+	public function adaptRolesFromUser($user = NULL): bool {
+		if($this->hasUser()) {
+			$myID = $this->getUserID();
+
+			if($user === NULL) {
+				$this->PDO->exec("UPDATE SKY_USER SET adapt_roles_from = NULL WHERE id = $myID");
+				return true;
+			} else {
+				if($user instanceof UserInterface)
+					$user = $user->getUsername();
+
+				$ID = $this->PDO->selectFieldValue("SELECT id FROM SKY_USER WHERE id = :token OR username = :token", 'id', ['token' => $user]);
+
+				if($ID) {
+					$this->PDO->exec("UPDATE SKY_USER SET adapt_roles_from $ID WHERE id = $myID");
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 }

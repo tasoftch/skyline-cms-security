@@ -215,7 +215,8 @@ return [
 					AuthenticationServiceFactory::USER_PROVIDER_DATABASE_NAME => [
 						AbstractFileConfiguration::SERVICE_CLASS => UserProvider::class,
 						AbstractFileConfiguration::SERVICE_INIT_ARGUMENTS => [
-							'PDO' => '$PDO'
+							'PDO' => '$PDO',
+							"can_adapt_roles" => '%security.db-user.can-adapt-roles%'
 						]
 					],
 					AuthenticationServiceFactory::USER_PROVIDER_INITIAL_NAME => [
